@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../shared/models/models.dart';
+import '../../../shared/services/mock_data.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
 class WorkshopsScreen extends StatelessWidget {
@@ -25,11 +26,11 @@ class WorkshopsScreen extends StatelessWidget {
         ])),
       const SizedBox(height:16),
       Padding(padding:const EdgeInsets.symmetric(horizontal:24),
-        child:SecHeader(title:'Available Now',sub:'${WorkshopModel.mockList.length} workshops within 10 miles')),
+        child:SecHeader(title:'Available Now',sub:'${AppData.i.workshops.length} workshops within 10 miles')),
       const SizedBox(height:12),
       Expanded(child:ListView.separated(padding:const EdgeInsets.fromLTRB(24,0,24,24),
-        itemCount:WorkshopModel.mockList.length,separatorBuilder:(_,__)=>const SizedBox(height:12),
-        itemBuilder:(_,i){final w=WorkshopModel.mockList[i];
+        itemCount:AppData.i.workshops.length,separatorBuilder:(_,__)=>const SizedBox(height:12),
+        itemBuilder:(_,i){final w=AppData.i.workshops[i];
           return ACard(onTap:()=>Navigator.pushNamed(context,R.workshopDetail,arguments:w.id),
             padding:const EdgeInsets.all(16),child:Row(children:[
               Container(width:52,height:52,decoration:BoxDecoration(gradient:AC.redGrad,borderRadius:Rd.mdA),

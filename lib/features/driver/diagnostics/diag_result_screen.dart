@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../shared/models/models.dart';
+import '../../../shared/services/mock_data.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
 class DiagResultScreen extends StatelessWidget {
@@ -11,7 +12,7 @@ class DiagResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final report = DiagnosticReport.mock;
+    final report = AppData.i.latestDiagnosticReport;
     final ai = report.aiPrediction;
 
     return Scaffold(

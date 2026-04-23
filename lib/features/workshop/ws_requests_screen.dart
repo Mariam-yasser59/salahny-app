@@ -30,9 +30,9 @@ class _WsRequestsScreenState extends State<WsRequestsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final pending  = WsMock.bookings.where((b) => b.status == RequestStatus.pending).toList();
-    final accepted = WsMock.bookings.where((b) => b.status == RequestStatus.accepted).toList();
-    final done     = WsMock.bookings.where((b) => b.status == RequestStatus.completed).toList();
+    final pending  = AppData.i.workshopBookings.where((b) => b.status == RequestStatus.pending).toList();
+    final accepted = AppData.i.workshopBookings.where((b) => b.status == RequestStatus.accepted).toList();
+    final done     = AppData.i.workshopBookings.where((b) => b.status == RequestStatus.completed).toList();
 
     return Scaffold(
       backgroundColor: AC.bg,

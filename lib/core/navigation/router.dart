@@ -18,7 +18,6 @@ import '../../features/driver/home/home_screen.dart';
 import '../../features/driver/services/services_screen.dart';
 import '../../features/driver/booking/book_service_screen.dart';
 import '../../features/driver/booking/booking_confirm_screen.dart';
-import '../../features/driver/booking/tracking_screen.dart';
 import '../../features/driver/workshops/workshops_screen.dart';
 import '../../features/driver/workshops/workshop_detail_screen.dart';
 import '../../features/driver/diagnostics/diagnostics_screen.dart';
@@ -41,6 +40,7 @@ import '../../features/driver/emergency/emergency_screen.dart';
 
 // Shared models
 import '../../shared/models/models.dart';
+import '../../shared/services/mock_data.dart';
 
 // Workshop
 import '../../features/workshop/ws_dashboard_screen.dart';
@@ -97,7 +97,7 @@ Route<dynamic> onGenerateRoute(RouteSettings s) {
       page = const BookingConfirmScreen();
       break;
     case R.bookingTrack:
-      page = const TrackingScreen();
+      page = const _TrackingRouteScreen();
       break;
     case R.workshops:
       page = const WorkshopsScreen();
@@ -219,4 +219,53 @@ Route<dynamic> onGenerateRoute(RouteSettings s) {
     ),
     transitionDuration: const Duration(milliseconds: 280),
   );
+}
+
+class _TrackingRouteScreen extends StatelessWidget {
+  const _TrackingRouteScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final booking = AppData.i.bookings.first;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF0D0D0D),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0D0D0D),
+        foregroundColor: Colors.white,
+        title: const Text('Track Booking'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              booking.serviceName,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${booking.workshopName} • ${booking.date} ${booking.time}',
+              style: const TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Status: ${booking.status}',
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Total: \$${booking.price.toStringAsFixed(2)}',
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

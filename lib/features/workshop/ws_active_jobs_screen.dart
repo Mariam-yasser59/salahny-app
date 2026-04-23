@@ -17,7 +17,7 @@ class _WsActiveJobsScreenState extends State<WsActiveJobsScreen> {
   @override
   void initState() {
     super.initState();
-    _jobs = WsMock.bookings
+    _jobs = AppData.i.workshopBookings
         .where((b) => b.status == RequestStatus.inProgress || b.status == RequestStatus.repairInProgress)
         .map((b) => _JobEntry(b, b.progress))
         .toList();

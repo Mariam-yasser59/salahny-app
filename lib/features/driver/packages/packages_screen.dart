@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../shared/models/models.dart';
+import '../../../shared/services/mock_data.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
 class PackagesScreen extends StatelessWidget {
@@ -22,7 +23,7 @@ class PackagesScreen extends StatelessWidget {
           const Text('Save more, worry less with Salahny subscriptions',style:TextStyle(fontSize:13,color:Colors.white70)),
         ])).animate().fadeIn(duration:400.ms),
       const SizedBox(height:24),
-      ...PackageModel.mockList.asMap().entries.map((e)=>Padding(padding:const EdgeInsets.only(bottom:16),
+      ...AppData.i.packages.asMap().entries.map((e)=>Padding(padding:const EdgeInsets.only(bottom:16),
         child:_PlanCard(pkg:e.value).animate().fadeIn(delay:((e.key+1)*100).ms).slideY(begin:0.2,end:0))),
       const SizedBox(height:20),
     ])),

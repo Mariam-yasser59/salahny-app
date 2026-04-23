@@ -77,8 +77,8 @@ class _HomeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = UserModel.mock;
-    final vehicle = VehicleModel.mockList;
+    final user = AppData.i.currentUser;
+    final vehicle = AppData.i.vehicles;
 
     return CustomScrollView(
       slivers: [
@@ -305,10 +305,10 @@ class _HomeTab extends StatelessWidget {
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
               scrollDirection: Axis.horizontal,
-              itemCount: WorkshopModel.mockList.length,
+              itemCount: AppData.i.workshops.length,
               separatorBuilder: (_, __) => const SizedBox(width: 14),
               itemBuilder: (_, i) =>
-                  _WorkshopMiniCard(w: WorkshopModel.mockList[i]),
+                  _WorkshopMiniCard(w: AppData.i.workshops[i]),
             ),
           ),
         ),
@@ -445,7 +445,7 @@ class _ActiveBookingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final b = BookingModel.mockList;
+    final b = AppData.i.bookings;
 
     return ACard(
       glow: true,
@@ -742,8 +742,8 @@ class _ServicesTabState extends State<_ServicesTab> {
   String _sel = 'All';
 
   List<ServiceModel> get _filtered => _sel == 'All'
-      ? ServiceModel.mockList
-      : ServiceModel.mockList.where((s) => s.category == _sel).toList();
+      ? AppData.i.services
+      : AppData.i.services.where((s) => s.category == _sel).toList();
 
   @override
   Widget build(BuildContext context) => Column(
@@ -1084,7 +1084,7 @@ class _DiagnosticsTabState extends State<_DiagnosticsTab>
 class _LastScanWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final d = DiagnosticModel.mock;
+    final d = AppData.i.diagnosticSummary;
 
     return ACard(
       glow: true,
@@ -1266,8 +1266,8 @@ class _BookingsTabState extends State<_BookingsTab>
           controller: _tab,
           children: _statuses.map((s) {
             final list = s == 'All'
-                ? BookingModel.mockList
-                : BookingModel.mockList
+                ? AppData.i.bookings
+                : AppData.i.bookings
                 .where((b) => b.status == s)
                 .toList();
             if (list.isEmpty) {
@@ -1393,7 +1393,7 @@ class _ProfileTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = UserModel.mock;
+    final user = AppData.i.currentUser;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24),

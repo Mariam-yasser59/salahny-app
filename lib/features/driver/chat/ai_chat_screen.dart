@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../shared/services/mock_data.dart';
 
 class AiChatScreen extends StatefulWidget {
   const AiChatScreen({super.key});
@@ -11,8 +12,22 @@ class _AiChatScreenState extends State<AiChatScreen> {
   final _ctrl = TextEditingController();
   final _scroll = ScrollController();
   bool _typing = false;
-  final _msgs = <_Msg>[_Msg('Hi! I\'m your AI car assistant. Ask me anything about your vehicle, maintenance, or diagnostics.',false)];
+  late final List<_Msg> _msgs;
   static const _suggestions = ['What does check engine light mean?','When should I change my oil?','How to check tire pressure?'];
+
+  @override
+  void initState() {
+    super.initState();
+    final user = AppData.i.currentUser;
+    final vehicle = AppData.i.vehicles.isEmpty ? null : AppData.i.vehicles.first;
+    final vehicleName = vehicle?.fullName ?? 'your vehicle';
+    _msgs = [
+      _Msg(
+        'Hi ${user.name.split(' ').first}! I can help with $vehicleName, maintenance, diagnostics, or uploaded OBD data.',
+        false,
+      ),
+    ];
+  }
 
   void _send(String txt) async {
     if(txt.trim().isEmpty) return;
@@ -22,7 +37,12 @@ class _AiChatScreenState extends State<AiChatScreen> {
     _scrollDown();
     await Future.delayed(1400.ms);
     if(!mounted) return;
-    setState((){_typing=false;_msgs.add(_Msg('Great question! Based on your Toyota Camry\'s data, I recommend checking this with a certified technician at your next scheduled visit. Would you like me to book an appointment?',false));});
+    final vehicle = AppData.i.vehicles.isEmpty ? null : AppData.i.vehicles.first;
+    final health = vehicle == null ? null : '${vehicle.health.toInt()}%';
+    final reply = vehicle == null
+        ? 'Great question. I need a saved vehicle or uploaded diagnostics to give a more specific recommendation.'
+        : 'Based on ${vehicle.fullName} (${vehicle.mileage} mi, health $health), I recommend checking this with a certified technician. Would you like me to book an appointment?';
+    setState((){_typing=false;_msgs.add(_Msg(reply,false));});
     await Future.delayed(100.ms);
     _scrollDown();
   }

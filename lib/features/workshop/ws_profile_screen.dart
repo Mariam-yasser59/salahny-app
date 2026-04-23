@@ -12,7 +12,14 @@ class WsProfileScreen extends StatelessWidget {
   const WsProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) {
+    final profile = AppData.i.workshopProfile;
+    final primaryWorkshop = AppData.i.workshops.firstWhere(
+      (w) => w.id == profile.id,
+      orElse: () => AppData.i.workshops.first,
+    );
+
+    return Scaffold(
     backgroundColor: AC.bg,
     appBar: const WsBar(title: 'Workshop Profile'),
     body: ListView(
@@ -26,16 +33,16 @@ class WsProfileScreen extends StatelessWidget {
               Container(
                 width: 70, height: 70,
                 decoration: BoxDecoration(gradient: AC.redGrad, borderRadius: Rd.lgA),
-                child: const Center(child: Text('PA',
-                    style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800))),
+                child: Center(child: Text(profile.initials,
+                    style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800))),
               ),
               const SizedBox(width: 16),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('ProTech Auto Center',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AC.t1, letterSpacing: -0.3)),
+                Text(profile.name,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AC.t1, letterSpacing: -0.3)),
                 const SizedBox(height: 4),
-                const Text('Multi-Service Workshop',
-                    style: TextStyle(fontSize: 12, color: AC.t3)),
+                Text(profile.specialty,
+                    style: const TextStyle(fontSize: 12, color: AC.t3)),
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -54,13 +61,13 @@ class WsProfileScreen extends StatelessWidget {
             const SizedBox(height: 18),
             const WsDiv(),
             const SizedBox(height: 14),
-            const WsInfoRow(label: 'Phone',     value: '+1 (555) 234-5678'),
+            WsInfoRow(label: 'Phone',     value: primaryWorkshop.phone),
             const SizedBox(height: 8),
-            const WsInfoRow(label: 'Address',   value: '142 Maple Ave, Downtown'),
+            WsInfoRow(label: 'Address',   value: primaryWorkshop.address),
             const SizedBox(height: 8),
-            const WsInfoRow(label: 'Jobs Done', value: '1,820'),
+            WsInfoRow(label: 'Jobs Done', value: '${primaryWorkshop.jobsDone}'),
             const SizedBox(height: 8),
-            const WsInfoRow(label: 'Rating',    value: '4.9 ⭐', bold: true),
+            WsInfoRow(label: 'Rating',    value: profile.rating.toStringAsFixed(1), bold: true),
           ]),
         ).animate().fadeIn(duration: 350.ms),
 
@@ -82,9 +89,9 @@ class WsProfileScreen extends StatelessWidget {
         const SizedBox(height: 12),
         WsCard(
           padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Column(children: WsMock.services.asMap().entries.map((e) {
+          child: Column(children: AppData.i.workshopServices.asMap().entries.map((e) {
             final s    = e.value;
-            final last = e.key == WsMock.services.length - 1;
+            final last = e.key == AppData.i.workshopServices.length - 1;
             return Column(children: [
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -132,6 +139,7 @@ class WsProfileScreen extends StatelessWidget {
       ],
     ),
   );
+  }
 }
 
 class _SecLabel extends StatelessWidget {

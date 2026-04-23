@@ -22,16 +22,32 @@ class _WsDiagnosticsScreenState extends State<WsDiagnosticsScreen>
   late AnimationController _scanAnim;
 
   // Manual entry controllers
-  final _rpmCtrl    = TextEditingController(text: '2200');
-  final _tempCtrl   = TextEditingController(text: '91');
-  final _mapCtrl    = TextEditingController(text: '75');
-  final _mafCtrl    = TextEditingController(text: '14.2');
-  final _o2Ctrl     = TextEditingController(text: '0.45');
-  final _codesCtrl  = TextEditingController(text: 'P0420, P0171');
+  late final TextEditingController _rpmCtrl;
+  late final TextEditingController _tempCtrl;
+  late final TextEditingController _mapCtrl;
+  late final TextEditingController _mafCtrl;
+  late final TextEditingController _o2Ctrl;
+  late final TextEditingController _codesCtrl;
 
   @override
   void initState() {
     super.initState();
+    final report = AppData.i.latestDiagnosticReport;
+    String vital(String key, String fallback) {
+      final match = report.vitals.where(
+        (v) => v.key.toLowerCase().contains(key.toLowerCase()),
+      );
+      return match.isEmpty ? fallback : match.first.value.toString();
+    }
+
+    _rpmCtrl = TextEditingController(text: vital('RPM', ''));
+    _tempCtrl = TextEditingController(text: vital('Coolant', ''));
+    _mapCtrl = TextEditingController(text: vital('MAP', ''));
+    _mafCtrl = TextEditingController(text: vital('MAF', ''));
+    _o2Ctrl = TextEditingController(text: vital('O2', ''));
+    _codesCtrl = TextEditingController(
+      text: report.faultCodes.map((c) => c.code).join(', '),
+    );
     _scanAnim = AnimationController(vsync: this, duration: 2200.ms);
   }
 

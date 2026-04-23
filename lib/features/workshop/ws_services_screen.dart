@@ -12,7 +12,7 @@ class WsServicesScreen extends StatefulWidget {
 }
 
 class _WsServicesScreenState extends State<WsServicesScreen> {
-  final List<WsServiceItem> _services = List.of(WsMock.services);
+  final List<WsServiceItem> _services = List.of(AppData.i.workshopServices);
 
   @override
   Widget build(BuildContext context) => Scaffold(

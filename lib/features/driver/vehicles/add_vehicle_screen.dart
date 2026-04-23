@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../../core/errors/app_error_handler.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/services/mock_data.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
 class AddVehicleScreen extends StatefulWidget {
@@ -96,9 +98,23 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               const SizedBox(height: 36),
               AppBtn(
                 label: 'Add Vehicle',
-                onTap: () {
+                onTap: () async {
                   if (_fk.currentState!.validate()) {
-                    Navigator.pop(context);
+                    final ok = await AppErrorHandler.guard<bool>(
+                      context,
+                      () async {
+                        await MockData.saveVehicle(
+                          make: _make.text.trim(),
+                          model: _model.text.trim(),
+                          year: _year.text.trim(),
+                          plate: _plate.text.trim(),
+                        );
+                        return true;
+                      },
+                      fallbackMessage: 'Could not add the vehicle. Please try again.',
+                      successMessage: 'Vehicle added successfully',
+                    );
+                    if (context.mounted && ok == true) Navigator.pop(context);
                   }
                 },
               ).animate().fadeIn(delay: 520.ms),

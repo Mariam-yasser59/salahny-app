@@ -9,7 +9,15 @@ class WsEarningsScreen extends StatelessWidget {
   const WsEarningsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) {
+    final profile = AppData.i.workshopProfile;
+    final jobs = AppData.i.workshopBookings;
+    final completedJobs = jobs.where((b) => b.status == RequestStatus.completed).length;
+    final totalJobsValue = jobs.fold(0.0, (sum, b) => sum + b.price);
+    final avgJob = jobs.isEmpty ? 0 : (totalJobsValue / jobs.length).round();
+    final latestPayout = AppData.i.workshopPayouts.isEmpty ? 0 : AppData.i.workshopPayouts.first.amount.toInt();
+
+    return Scaffold(
     backgroundColor: AC.bg,
     appBar: const WsBar(title: 'Earnings & Payouts'),
     body: ListView(
@@ -28,21 +36,21 @@ class WsEarningsScreen extends StatelessWidget {
             const SizedBox(height: 12),
             ShaderMask(
               shaderCallback: (b) => AC.goldGrad.createShader(b),
-              child: const Text('\$8,450', style: TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -1.5)),
+              child: Text('\$${profile.monthlyRevenue.toInt()}', style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -1.5)),
             ),
             const SizedBox(height: 6),
-            const Text('December 2024', style: TextStyle(fontSize: 13, color: Colors.white54)),
+            Text(profile.revenuePeriod, style: const TextStyle(fontSize: 13, color: Colors.white54)),
             const SizedBox(height: 20),
             Container(height: 0.5, color: Colors.white.withOpacity(0.18)),
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: const [
-                _HeroStat(label: 'Jobs Done', value: '42'),
-                _VDiv(),
-                _HeroStat(label: 'Avg / Job', value: '\$201'),
-                _VDiv(),
-                _HeroStat(label: 'Rating',   value: '4.9 ⭐'),
+              children: [
+                _HeroStat(label: 'Jobs Done', value: '$completedJobs'),
+                const _VDiv(),
+                _HeroStat(label: 'Avg / Job', value: '\$$avgJob'),
+                const _VDiv(),
+                _HeroStat(label: 'Rating', value: profile.rating.toStringAsFixed(1)),
               ],
             ),
           ]),
@@ -58,11 +66,11 @@ class WsEarningsScreen extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: 2, mainAxisSpacing: 12, crossAxisSpacing: 12,
           childAspectRatio: 1.45,
-          children: const [
-            WsStatTile(label: 'Today',         value: '\$840',  icon: Icons.today_rounded,        color: AC.success),
-            WsStatTile(label: 'This Week',      value: '\$4,200',icon: Icons.date_range_rounded,   color: AC.info),
-            WsStatTile(label: 'Completed Jobs', value: '156',   icon: Icons.check_circle_rounded, color: AC.warning),
-            WsStatTile(label: 'Repeat Clients', value: '38%',   icon: Icons.people_rounded,       color: AC.red),
+          children: [
+            WsStatTile(label: 'Today', value: '\$${totalJobsValue.toInt()}', icon: Icons.today_rounded, color: AC.success),
+            WsStatTile(label: 'This Week', value: '\$$latestPayout', icon: Icons.date_range_rounded, color: AC.info),
+            WsStatTile(label: 'Completed Jobs', value: '$completedJobs', icon: Icons.check_circle_rounded, color: AC.warning),
+            WsStatTile(label: 'Repeat Clients', value: '${jobs.length * 8}%', icon: Icons.people_rounded, color: AC.red),
           ],
         ).animate().fadeIn(duration: 400.ms, delay: 80.ms),
 
@@ -71,7 +79,7 @@ class WsEarningsScreen extends StatelessWidget {
         // ── Payouts ────────────────────────────────────────────────────────
         const _SecLabel('Recent Payouts'),
         const SizedBox(height: 12),
-        ...WsMock.payouts.asMap().entries.map((e) => Padding(
+        ...AppData.i.workshopPayouts.asMap().entries.map((e) => Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: _PayoutRow(e.value)
               .animate().fadeIn(duration: 350.ms, delay: (e.key * 60).ms),
@@ -82,6 +90,7 @@ class WsEarningsScreen extends StatelessWidget {
       ],
     ),
   );
+  }
 }
 
 class _SecLabel extends StatelessWidget {

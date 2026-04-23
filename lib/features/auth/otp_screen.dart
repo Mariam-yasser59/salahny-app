@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../core/errors/app_error_handler.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 import '../../shared/services/mock_data.dart';
@@ -20,7 +21,10 @@ class _OtpScreenState extends State<OtpScreen> {
   }
   @override void dispose() { for(final c in _ctrls) c.dispose(); for(final f in _focuses) f.dispose(); super.dispose(); }
 
-  @override Widget build(BuildContext context) => Scaffold(
+  @override Widget build(BuildContext context) {
+    final phone = AppData.i.currentUser.phone;
+
+    return Scaffold(
     backgroundColor:AC.bg,
     body:SafeArea(child:Padding(padding:const EdgeInsets.symmetric(horizontal:24),child:Column(children:[
       const SizedBox(height:16),
@@ -37,8 +41,8 @@ class _OtpScreenState extends State<OtpScreen> {
       const Text('Verify Your Number',style:TextStyle(fontSize:26,fontWeight:FontWeight.w800,color:AC.t1))
         .animate().fadeIn(delay:200.ms),
       const SizedBox(height:8),
-      const Text('Enter the 4-digit code sent to\n+1 (555) 000-0000',textAlign:TextAlign.center,
-        style:TextStyle(fontSize:14,color:AC.t3,height:1.6)).animate().fadeIn(delay:300.ms),
+      Text('Enter the 4-digit code sent to\n$phone',textAlign:TextAlign.center,
+        style:const TextStyle(fontSize:14,color:AC.t3,height:1.6)).animate().fadeIn(delay:300.ms),
       const SizedBox(height:44),
       Row(mainAxisAlignment:MainAxisAlignment.center, children:List.generate(4,(i)=>Container(
         margin:const EdgeInsets.symmetric(horizontal:8), width:62, height:66,
@@ -54,12 +58,26 @@ class _OtpScreenState extends State<OtpScreen> {
         )))).animate().fadeIn(delay:400.ms),
       const SizedBox(height:36),
       AppBtn(label:'Verify & Continue',loading:_loading,onTap:() async {
+        final code = _ctrls.map((c) => c.text.trim()).join();
+        if(code.length != 4){
+          AppErrorHandler.showMessage(context, 'Enter the 4-digit verification code');
+          return;
+        }
         setState(()=>_loading=true);
-        await Future.delayed(1200.ms);
-        await MockData.saveToken('tok_${DateTime.now().millisecondsSinceEpoch}');
-        final role=await MockData.getRole();
-        if(mounted){setState(()=>_loading=false);
-          Navigator.pushNamedAndRemoveUntil(context,role=='workshop'?R.wsDashboard:R.home,(_)=>false);}
+        final role = await AppErrorHandler.guard<String?>(
+          context,
+          () async {
+            await Future.delayed(1200.ms);
+            await MockData.saveToken('tok_${DateTime.now().millisecondsSinceEpoch}');
+            return MockData.getRole();
+          },
+          fallbackMessage: 'Could not verify the code. Please try again.',
+        );
+        if(!mounted) return;
+        setState(()=>_loading=false);
+        if(role != null){
+          Navigator.pushNamedAndRemoveUntil(context,role=='workshop'?R.wsDashboard:R.home,(_)=>false);
+        }
       }).animate().fadeIn(delay:500.ms),
       const SizedBox(height:24),
       Row(mainAxisAlignment:MainAxisAlignment.center,children:[
@@ -70,4 +88,5 @@ class _OtpScreenState extends State<OtpScreen> {
       ]).animate().fadeIn(delay:600.ms),
     ]))),
   );
+  }
 }

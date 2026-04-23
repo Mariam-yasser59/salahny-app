@@ -9,7 +9,7 @@ import '../../../shared/widgets/app_widgets.dart';
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
   @override Widget build(BuildContext context){
-    const u=UserModel.mock;
+    final u=AppData.i.currentUser;
     return Scaffold(backgroundColor:AC.bg,
       appBar:SAppBar(title:'My Profile',actions:[
         GestureDetector(onTap:()=>Navigator.pushNamed(context,R.editProfile),

@@ -1,4 +1,4 @@
-// lib/features/workshop/ws_chat_screen.dart
+﻿// lib/features/workshop/ws_chat_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -17,14 +17,21 @@ class _WsChatScreenState extends State<WsChatScreen> {
   final _ctrl   = TextEditingController();
   final _scroll = ScrollController();
 
-  final List<ChatMessage> _messages = [
-    ChatMessage(id: 'm1', text: 'Hello! I booked an oil change for tomorrow at 10 AM. Just wanted to confirm it\'s all good.', senderId: 'driver', time: DateTime.now().subtract(const Duration(minutes: 22)), isMe: false),
-    ChatMessage(id: 'm2', text: 'Hi! Yes, everything is confirmed. We have you scheduled for 10 AM. Please bring the car in 15 mins early for check-in.', senderId: 'ws', time: DateTime.now().subtract(const Duration(minutes: 20)), isMe: true),
-    ChatMessage(id: 'm3', text: 'Great! Should I turn off the engine before pulling in?', senderId: 'driver', time: DateTime.now().subtract(const Duration(minutes: 18)), isMe: false),
-    ChatMessage(id: 'm4', text: 'Yes, please. Our technician will meet you at the entrance. You\'ll also get a status update via the app.', senderId: 'ws', time: DateTime.now().subtract(const Duration(minutes: 16)), isMe: true),
-    ChatMessage(id: 'm5', text: 'Perfect, thanks! One more thing — can you also check the brake pads while you\'re at it?', senderId: 'driver', time: DateTime.now().subtract(const Duration(minutes: 10)), isMe: false),
-    ChatMessage(id: 'm6', text: 'Absolutely, we\'ll add a free brake pad inspection to your appointment.', senderId: 'ws', time: DateTime.now().subtract(const Duration(minutes: 8)), isMe: true),
-  ];
+  late final WsBookingData _booking;
+  late final List<ChatMessage> _messages;
+
+  @override
+  void initState() {
+    super.initState();
+    _booking = AppData.i.workshopBookings.firstWhere(
+      (b) => b.id == widget.bookingId,
+      orElse: () => AppData.i.workshopBookings.first,
+    );
+    _messages = [
+      ChatMessage(id: 'm1', text: 'Hello! I booked ${_booking.serviceName} for ${_booking.date} at ${_booking.time}. Just wanted to confirm it is all good.', senderId: 'driver', time: DateTime.now().subtract(const Duration(minutes: 22)), isMe: false),
+      ChatMessage(id: 'm2', text: 'Hi ${_booking.customerName.split(' ').first}! Yes, everything is confirmed. Please bring ${_booking.vehicleInfo} in 15 mins early for check-in.', senderId: 'ws', time: DateTime.now().subtract(const Duration(minutes: 20)), isMe: true),
+    ];
+  }
 
   void _send() {
     final text = _ctrl.text.trim();
@@ -62,7 +69,7 @@ class _WsChatScreenState extends State<WsChatScreen> {
       ],
     ),
     body: Column(children: [
-      // ── Context Banner ───────────────────────────────────────────────────
+      // â”€â”€ Context Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: const BoxDecoration(color: AC.s1, border: Border(bottom: BorderSide(color: AC.border, width: 0.5))),
@@ -74,19 +81,19 @@ class _WsChatScreenState extends State<WsChatScreen> {
           ),
           const SizedBox(width: 10),
           Expanded(child: Text(
-            'Request #${widget.bookingId} — Oil Change',
+            'Request #${_booking.id} • ${_booking.serviceName}',
             style: const TextStyle(fontSize: 12, color: AC.t3),
             overflow: TextOverflow.ellipsis,
           )),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(color: AC.warning.withOpacity(0.12), borderRadius: Rd.fullA, border: Border.all(color: AC.warning.withOpacity(0.3))),
-            child: const Text('In Progress', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AC.warning)),
+            child: Text(RequestStatus.label(_booking.status), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AC.warning)),
           ),
         ]),
       ),
 
-      // ── Messages ─────────────────────────────────────────────────────────
+      // â”€â”€ Messages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       Expanded(
         child: ListView.builder(
           controller: _scroll,
@@ -97,7 +104,7 @@ class _WsChatScreenState extends State<WsChatScreen> {
         ),
       ),
 
-      // ── Input Bar ────────────────────────────────────────────────────────
+      // â”€â”€ Input Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       Container(
         padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + MediaQuery.of(context).viewInsets.bottom),
         decoration: const BoxDecoration(
@@ -113,7 +120,7 @@ class _WsChatScreenState extends State<WsChatScreen> {
                 controller: _ctrl,
                 style: const TextStyle(fontSize: 14, color: AC.t1),
                 decoration: const InputDecoration(
-                  hintText: 'Type a message…',
+                  hintText: 'Type a messageâ€¦',
                   hintStyle: TextStyle(color: AC.t3, fontSize: 14),
                   border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero,
                 ),
@@ -137,7 +144,7 @@ class _WsChatScreenState extends State<WsChatScreen> {
   );
 }
 
-// ─── BUBBLE ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ BUBBLE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _Bubble extends StatelessWidget {
   final ChatMessage msg;
   const _Bubble({required this.msg});

@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '_ws_shared.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
+import '../../shared/services/mock_data.dart';
 
 class WsAiReportScreen extends StatelessWidget {
   final String? linkedRequestId;
@@ -10,7 +11,7 @@ class WsAiReportScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final report = DiagnosticReport.mock;
+    final report = AppData.i.latestDiagnosticReport;
     final ai = report.aiPrediction!;
 
     return Scaffold(

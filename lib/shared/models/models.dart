@@ -17,6 +17,25 @@ extension RiskLevelX on RiskLevel {
   String toUpperCase() => label.toUpperCase();
 }
 
+String appShortDate([int daysFromToday = 0]) {
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  final date = DateTime.now().add(Duration(days: daysFromToday));
+  return '${months[date.month - 1]} ${date.day}';
+}
+
 enum RequestStatus {
   pending,
   accepted,
@@ -539,35 +558,120 @@ class BookingModel {
     required this.price,
   });
 
-  static const List<BookingModel> mockList = [
-    BookingModel(
-      id: 'bk1',
-      serviceName: 'Oil Change',
-      workshopName: 'ProTech Auto Center',
-      status: 'In Progress',
-      date: 'Apr 24',
-      time: '10:00 AM',
-      price: 89,
-    ),
-    BookingModel(
-      id: 'bk2',
-      serviceName: 'Brake Service',
-      workshopName: 'QuickFix Motors',
-      status: 'Pending',
-      date: 'Apr 25',
-      time: '01:30 PM',
-      price: 199,
-    ),
-    BookingModel(
-      id: 'bk3',
-      serviceName: 'Battery Check',
-      workshopName: 'Speed Kings Garage',
-      status: 'Completed',
-      date: 'Apr 19',
-      time: '09:00 AM',
-      price: 39,
-    ),
-  ];
+  static List<BookingModel> get mockList => [
+        BookingModel(
+          id: 'bk1',
+          serviceName: 'Oil Change',
+          workshopName: 'ProTech Auto Center',
+          status: 'In Progress',
+          date: appShortDate(1),
+          time: '10:00 AM',
+          price: 89,
+        ),
+        BookingModel(
+          id: 'bk2',
+          serviceName: 'Brake Service',
+          workshopName: 'QuickFix Motors',
+          status: 'Pending',
+          date: appShortDate(2),
+          time: '01:30 PM',
+          price: 199,
+        ),
+        BookingModel(
+          id: 'bk3',
+          serviceName: 'Battery Check',
+          workshopName: 'Speed Kings Garage',
+          status: 'Completed',
+          date: appShortDate(-4),
+          time: '09:00 AM',
+          price: 39,
+        ),
+      ];
+}
+
+class PaymentOptionData {
+  final String id;
+  final String icon;
+  final String label;
+
+  const PaymentOptionData({
+    required this.id,
+    required this.icon,
+    required this.label,
+  });
+}
+
+class BookingCheckoutData {
+  final String serviceId;
+  final String serviceName;
+  final String workshopId;
+  final String workshopName;
+  final String vehicleId;
+  final String vehicleLabel;
+  final String date;
+  final String time;
+  final int durationMins;
+  final double subtotal;
+  final double serviceFee;
+  final double discount;
+  final double total;
+  final List<PaymentOptionData> paymentOptions;
+  final String selectedPaymentOptionId;
+
+  const BookingCheckoutData({
+    required this.serviceId,
+    required this.serviceName,
+    required this.workshopId,
+    required this.workshopName,
+    required this.vehicleId,
+    required this.vehicleLabel,
+    required this.date,
+    required this.time,
+    required this.durationMins,
+    required this.subtotal,
+    required this.serviceFee,
+    required this.discount,
+    required this.total,
+    required this.paymentOptions,
+    required this.selectedPaymentOptionId,
+  });
+
+  BookingCheckoutData copyWith({
+    String? serviceId,
+    String? serviceName,
+    String? workshopId,
+    String? workshopName,
+    String? vehicleId,
+    String? vehicleLabel,
+    String? date,
+    String? time,
+    int? durationMins,
+    double? subtotal,
+    double? serviceFee,
+    double? discount,
+    double? total,
+    List<PaymentOptionData>? paymentOptions,
+    String? selectedPaymentOptionId,
+  }) {
+    return BookingCheckoutData(
+      serviceId: serviceId ?? this.serviceId,
+      serviceName: serviceName ?? this.serviceName,
+      workshopId: workshopId ?? this.workshopId,
+      workshopName: workshopName ?? this.workshopName,
+      vehicleId: vehicleId ?? this.vehicleId,
+      vehicleLabel: vehicleLabel ?? this.vehicleLabel,
+      date: date ?? this.date,
+      time: time ?? this.time,
+      durationMins: durationMins ?? this.durationMins,
+      subtotal: subtotal ?? this.subtotal,
+      serviceFee: serviceFee ?? this.serviceFee,
+      discount: discount ?? this.discount,
+      total: total ?? this.total,
+      paymentOptions: paymentOptions ?? this.paymentOptions,
+      selectedPaymentOptionId:
+          selectedPaymentOptionId ?? this.selectedPaymentOptionId,
+    );
+  }
 }
 
 class PackageModel {
@@ -732,67 +836,67 @@ class WsPayoutData {
 class WsMock {
   WsMock._();
 
-  static const List<WsBookingData> bookings = [
-    WsBookingData(
-      id: 'b001',
-      serviceName: 'Oil Change',
-      customerName: 'James Carter',
-      customerPhone: '+1 (555) 234-5678',
-      vehicleInfo: 'Toyota Camry 2022',
-      date: 'Dec 22',
-      time: '10:00 AM',
-      price: 85,
-      status: RequestStatus.pending,
-    ),
-    WsBookingData(
-      id: 'b002',
-      serviceName: 'Brake Check',
-      customerName: 'Sara Ahmed',
-      customerPhone: '+20 101 987 6543',
-      vehicleInfo: 'Hyundai Elantra 2021',
-      date: 'Dec 22',
-      time: '12:30 PM',
-      price: 120,
-      status: RequestStatus.accepted,
-      progress: 0.15,
-    ),
-    WsBookingData(
-      id: 'b003',
-      serviceName: 'Engine Diagnostics',
-      customerName: 'Michael Torres',
-      customerPhone: '+1 (555) 876-5432',
-      vehicleInfo: 'BMW X3 2020',
-      date: 'Dec 22',
-      time: '09:00 AM',
-      price: 200,
-      status: RequestStatus.inProgress,
-      progress: 0.60,
-    ),
-    WsBookingData(
-      id: 'b004',
-      serviceName: 'Tire Rotation',
-      customerName: 'Lena Hoffman',
-      customerPhone: '+49 170 123 4567',
-      vehicleInfo: 'Nissan Sunny 2023',
-      date: 'Dec 22',
-      time: '11:00 AM',
-      price: 65,
-      status: RequestStatus.repairInProgress,
-      progress: 0.35,
-    ),
-    WsBookingData(
-      id: 'b005',
-      serviceName: 'Battery Service',
-      customerName: 'Omar Khalil',
-      customerPhone: '+20 100 555 4321',
-      vehicleInfo: 'Kia Sportage 2022',
-      date: 'Dec 21',
-      time: '02:15 PM',
-      price: 95,
-      status: RequestStatus.completed,
-      progress: 1.0,
-    ),
-  ];
+  static List<WsBookingData> get bookings => [
+        WsBookingData(
+          id: 'b001',
+          serviceName: 'Oil Change',
+          customerName: 'James Carter',
+          customerPhone: '+1 (555) 234-5678',
+          vehicleInfo: 'Toyota Camry 2022',
+          date: appShortDate(1),
+          time: '10:00 AM',
+          price: 85,
+          status: RequestStatus.pending,
+        ),
+        WsBookingData(
+          id: 'b002',
+          serviceName: 'Brake Check',
+          customerName: 'Sara Ahmed',
+          customerPhone: '+20 101 987 6543',
+          vehicleInfo: 'Hyundai Elantra 2021',
+          date: appShortDate(1),
+          time: '12:30 PM',
+          price: 120,
+          status: RequestStatus.accepted,
+          progress: 0.15,
+        ),
+        WsBookingData(
+          id: 'b003',
+          serviceName: 'Engine Diagnostics',
+          customerName: 'Michael Torres',
+          customerPhone: '+1 (555) 876-5432',
+          vehicleInfo: 'BMW X3 2020',
+          date: appShortDate(),
+          time: '09:00 AM',
+          price: 200,
+          status: RequestStatus.inProgress,
+          progress: 0.60,
+        ),
+        WsBookingData(
+          id: 'b004',
+          serviceName: 'Tire Rotation',
+          customerName: 'Lena Hoffman',
+          customerPhone: '+49 170 123 4567',
+          vehicleInfo: 'Nissan Sunny 2023',
+          date: appShortDate(),
+          time: '11:00 AM',
+          price: 65,
+          status: RequestStatus.repairInProgress,
+          progress: 0.35,
+        ),
+        WsBookingData(
+          id: 'b005',
+          serviceName: 'Battery Service',
+          customerName: 'Omar Khalil',
+          customerPhone: '+20 100 555 4321',
+          vehicleInfo: 'Kia Sportage 2022',
+          date: appShortDate(-1),
+          time: '02:15 PM',
+          price: 95,
+          status: RequestStatus.completed,
+          progress: 1.0,
+        ),
+      ];
 
   static const List<WsServiceItem> services = [
     WsServiceItem(emoji: '🛢️', name: 'Oil Change', durationMins: 30, price: 85),

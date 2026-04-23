@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../shared/models/models.dart';
+import '../../../shared/services/mock_data.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
 class DiagHistoryScreen extends StatefulWidget {
@@ -17,8 +18,8 @@ class _DiagHistoryScreenState extends State<DiagHistoryScreen> {
   final _filters = ['All', 'Healthy', 'Warning', 'Critical'];
 
   List<DiagnosticReport> get _filtered {
-    if (_filter == 'All') return DiagnosticReport.mockHistory;
-    return DiagnosticReport.mockHistory
+    if (_filter == 'All') return AppData.i.diagnosticHistory;
+    return AppData.i.diagnosticHistory
         .where((r) => r.riskLevel.label == _filter)
         .toList();
   }

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../shared/services/mock_data.dart';
 
 class MechanicChatScreen extends StatelessWidget {
   const MechanicChatScreen({super.key});
-  @override Widget build(BuildContext context) => Scaffold(
+  @override Widget build(BuildContext context) {
+    final booking = AppData.i.bookings.first;
+    final workshopInitial = booking.workshopName.isEmpty ? '?' : booking.workshopName[0];
+    return Scaffold(
     backgroundColor:AC.bg,
     body:Column(children:[
       Container(padding:EdgeInsets.only(top:MediaQuery.of(context).padding.top+10,bottom:14,left:16,right:16),
@@ -15,17 +19,17 @@ class MechanicChatScreen extends StatelessWidget {
               child:const Icon(Icons.arrow_back_ios_new_rounded,color:AC.t1,size:18))),
           const SizedBox(width:12),
           Container(width:42,height:42,decoration:BoxDecoration(gradient:AC.redGrad,shape:BoxShape.circle),
-            child:const Center(child:Text('P',style:TextStyle(fontSize:18,fontWeight:FontWeight.w800,color:Colors.white)))),
+            child:Center(child:Text(workshopInitial,style:const TextStyle(fontSize:18,fontWeight:FontWeight.w800,color:Colors.white)))),
           const SizedBox(width:10),
           Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            const Text('ProTech Auto',style:TextStyle(fontSize:15,fontWeight:FontWeight.w700,color:AC.t1)),
+            Text(booking.workshopName,style:const TextStyle(fontSize:15,fontWeight:FontWeight.w700,color:AC.t1)),
             Row(children:[Container(width:7,height:7,decoration:BoxDecoration(color:AC.success,shape:BoxShape.circle)),
               const SizedBox(width:5),const Text('Online',style:TextStyle(fontSize:11,color:AC.success))]),
           ])),
           const Icon(Icons.call_rounded,color:AC.red,size:24),
         ])),
       Expanded(child:ListView(padding:const EdgeInsets.symmetric(horizontal:16,vertical:12),children:[
-        _B('Hello! Your vehicle is in the garage. I\'ll start the inspection shortly.',false),
+        _B('Hello! Your ${booking.serviceName.toLowerCase()} booking is active. I\'ll update you shortly.',false),
         _B('Hi, thanks! Please let me know if you find any issues.',true),
         _B('Inspection is done. Found minor brake wear. Recommend replacement within 2,000 miles.',false),
         _B('How much would that cost?',true),
@@ -43,6 +47,7 @@ class MechanicChatScreen extends StatelessWidget {
         ])),
     ]),
   );
+  }
 }
 class _B extends StatelessWidget {
   final String text; final bool isMe;

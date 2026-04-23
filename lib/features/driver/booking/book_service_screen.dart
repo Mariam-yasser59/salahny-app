@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../shared/models/models.dart';
+import '../../../shared/services/mock_data.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
 class BookServiceScreen extends StatefulWidget {
@@ -17,14 +19,12 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
   int _step = 0;
   String? _vehicleId, _workshopId, _date, _time;
 
-  final _dates = [
-    'Today',
-    'Tomorrow',
-    'Dec 21',
-    'Dec 22',
-    'Dec 23',
-    'Dec 24',
-  ];
+  late final _dates = List.generate(6, (i) {
+    final date = DateTime.now().add(Duration(days: i));
+    if (i == 0) return 'Today';
+    if (i == 1) return 'Tomorrow';
+    return DateFormat('MMM d').format(date);
+  });
 
   final _times = [
     '9:00 AM',
@@ -46,8 +46,18 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
   bool get _canNext =>
       [_vehicleId != null, _workshopId != null, _date != null, _time != null][_step];
 
+  ServiceModel _selectedService(BuildContext context) {
+    final serviceId = ModalRoute.of(context)?.settings.arguments as String?;
+    return AppData.i.services.firstWhere(
+      (service) => service.id == serviceId,
+      orElse: () => AppData.i.services.first,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final selectedService = _selectedService(context);
+
     return Scaffold(
       backgroundColor: AC.bg,
       appBar: SAppBar(title: 'Book a Service'),
@@ -129,7 +139,7 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
                   ListView(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     children: [
-                      ...VehicleModel.mockList.map(
+                      ...AppData.i.vehicles.map(
                             (v) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: VehicleCard(
@@ -149,7 +159,7 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
                   ListView(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     children: [
-                      ...WorkshopModel.mockList.map(
+                      ...AppData.i.workshops.map(
                             (w) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: GestureDetector(
@@ -371,10 +381,57 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
                     child: AppBtn(
                       label: _step < 3 ? 'Next' : 'Confirm Booking',
                       onTap: _canNext
-                          ? () {
+                          ? () async {
                         if (_step < 3) {
                           setState(() => _step++);
                         } else {
+                          final vehicle = AppData.i.vehicles.firstWhere(
+                            (item) => item.id == _vehicleId,
+                            orElse: () => AppData.i.vehicles.first,
+                          );
+                          final workshop = AppData.i.workshops.firstWhere(
+                            (item) => item.id == _workshopId,
+                            orElse: () => AppData.i.workshops.first,
+                          );
+                          final subtotal = selectedService.price;
+                          final serviceFee = 5.0;
+                          final discount = selectedService.isPopular ? 4.0 : 0.0;
+                          await MockData.saveBookingCheckout(
+                            BookingCheckoutData(
+                              serviceId: selectedService.id,
+                              serviceName: selectedService.name,
+                              workshopId: workshop.id,
+                              workshopName: workshop.name,
+                              vehicleId: vehicle.id,
+                              vehicleLabel: vehicle.fullName,
+                              date: _date!,
+                              time: _time!,
+                              durationMins: selectedService.durationMins,
+                              subtotal: subtotal,
+                              serviceFee: serviceFee,
+                              discount: discount,
+                              total: subtotal + serviceFee - discount,
+                              paymentOptions: const [
+                                PaymentOptionData(
+                                  id: 'card',
+                                  icon: '💳',
+                                  label: 'Credit / Debit Card',
+                                ),
+                                PaymentOptionData(
+                                  id: 'wallet',
+                                  icon: '📱',
+                                  label: 'Apple Pay',
+                                ),
+                                PaymentOptionData(
+                                  id: 'cash',
+                                  icon: '💵',
+                                  label: 'Cash on Service',
+                                ),
+                              ],
+                              selectedPaymentOptionId: 'card',
+                            ),
+                          );
+                          if (!mounted) return;
                           Navigator.pushReplacementNamed(
                             context,
                             R.bookingConfirm,

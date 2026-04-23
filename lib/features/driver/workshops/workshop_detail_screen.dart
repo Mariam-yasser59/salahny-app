@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../shared/models/models.dart';
+import '../../../shared/services/mock_data.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
 class WorkshopDetailScreen extends StatelessWidget {
@@ -10,7 +11,7 @@ class WorkshopDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final w = WorkshopModel.mockList;
+    final w = AppData.i.workshops;
     final ws = w[0];
 
     return Scaffold(
@@ -191,7 +192,7 @@ class WorkshopDetailScreen extends StatelessWidget {
                   const SecHeader(title: 'Services Offered'),
                   const SizedBox(height: 12),
 
-                  ...ServiceModel.mockList.take(4).map(
+                  ...AppData.i.services.take(4).map(
                         (s) => Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Container(

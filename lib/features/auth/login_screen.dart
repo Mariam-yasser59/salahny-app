@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../core/errors/app_error_handler.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 import '../../shared/services/mock_data.dart';
@@ -15,8 +16,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _fk = GlobalKey<FormState>();
-  final _email = TextEditingController(text: 'demo@salahny.com');
-  final _pass = TextEditingController(text: '123456');
+  final _email = TextEditingController();
+  final _pass = TextEditingController();
 
   bool _loading = false;
   bool _showPass = false;
@@ -25,16 +26,24 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_fk.currentState!.validate()) return;
 
     setState(() => _loading = true);
-    await Future.delayed(1400.ms);
-
-    final role = await MockData.getRole();
-    await MockData.saveToken(
-      'mock_token_${DateTime.now().millisecondsSinceEpoch}',
+    final role = await AppErrorHandler.guard<String?>(
+      context,
+      () async {
+        await Future.delayed(1400.ms);
+        final nextRole = await MockData.getRole();
+        await MockData.loadCurrentUser();
+        await MockData.saveToken(
+          'mock_token_${DateTime.now().millisecondsSinceEpoch}',
+        );
+        return nextRole;
+      },
+      fallbackMessage: 'Could not sign you in right now.',
     );
 
     if (!mounted) return;
 
     setState(() => _loading = false);
+    if (role == null) return;
     Navigator.pushReplacementNamed(
       context,
       role == 'workshop' ? R.wsDashboard : R.home,
@@ -130,7 +139,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: AC.t3,
                       ),
                       validator: (v) =>
-                      v == null || v.isEmpty ? 'Enter your email' : null,
+                      v == null || !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v.trim())
+                          ? 'Enter a valid email'
+                          : null,
                     ).animate().fadeIn(delay: 200.ms).slideY(
                       begin: 0.2,
                       end: 0,
@@ -156,9 +167,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           color: AC.t3,
                         ),
                       ),
-                      validator: (v) => v == null || v.length < 6
-                          ? 'Password too short'
-                          : null,
+                      validator: (v) {
+                        final value = v ?? '';
+                        if (value.length < 8) return 'Use at least 8 characters';
+                        if (!RegExp(r'[A-Z]').hasMatch(value)) return 'Add one uppercase letter';
+                        if (!RegExp(r'\d').hasMatch(value)) return 'Add one number';
+                        return null;
+                      },
                     ).animate().fadeIn(delay: 300.ms).slideY(
                       begin: 0.2,
                       end: 0,

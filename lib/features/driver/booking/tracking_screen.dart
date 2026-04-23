@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../shared/services/mock_data.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
 class TrackingScreen extends StatelessWidget {
@@ -12,7 +13,9 @@ class TrackingScreen extends StatelessWidget {
     ('Work in Progress','Technician has started','false',AC.info),
     ('Ready for Pickup','Your car is ready','false',AC.success),
   ];
-  @override Widget build(BuildContext context) => Scaffold(
+  @override Widget build(BuildContext context) {
+    final booking = AppData.i.bookings.first;
+    return Scaffold(
     backgroundColor:AC.bg,
     appBar:SAppBar(title:'Track Booking'),
     body:Padding(padding:const EdgeInsets.symmetric(horizontal:24),child:Column(children:[
@@ -20,11 +23,11 @@ class TrackingScreen extends StatelessWidget {
       ACard(glow:true,glowColor:AC.warning,child:Row(children:[
         Container(width:48,height:48,decoration:BoxDecoration(gradient:AC.redGrad,borderRadius:Rd.mdA)),
         const SizedBox(width:14),
-        const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Text('Oil Change',style:TextStyle(fontSize:15,fontWeight:FontWeight.w700,color:AC.t1)),
-          Text('ProTech Auto â€¢ Today 10:00 AM',style:TextStyle(fontSize:12,color:AC.t3)),
+        Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Text(booking.serviceName,style:const TextStyle(fontSize:15,fontWeight:FontWeight.w700,color:AC.t1)),
+          Text('${booking.workshopName} • ${booking.date} ${booking.time}',style:const TextStyle(fontSize:12,color:AC.t3)),
         ])),
-        const StatusChip('Active'),
+        StatusChip(booking.status),
       ])).animate().fadeIn(duration:400.ms),
       const SizedBox(height:24),
       Expanded(child:ListView.builder(itemCount:_steps.length,itemBuilder:(_,i){
@@ -54,4 +57,5 @@ class TrackingScreen extends StatelessWidget {
           icon:const Icon(Icons.chat_bubble_outline_rounded,color:AC.red,size:18))),
     ])),
   );
+  }
 }

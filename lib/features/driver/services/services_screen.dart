@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../shared/models/models.dart';
+import '../../../shared/services/mock_data.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
 class ServicesScreen extends StatefulWidget {
@@ -29,8 +30,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
 
   List<ServiceModel> get _filtered =>
       _sel == 'All'
-          ? ServiceModel.mockList
-          : ServiceModel.mockList.where((s) => s.category == _sel).toList();
+          ? AppData.i.services
+          : AppData.i.services.where((s) => s.category == _sel).toList();
 
   @override
   Widget build(BuildContext context) {

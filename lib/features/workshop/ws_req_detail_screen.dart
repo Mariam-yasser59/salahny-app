@@ -20,6 +20,11 @@ class WsReqDetailScreen extends StatefulWidget {
 class _WsReqDetailScreenState extends State<WsReqDetailScreen> {
   late RequestStatus _status;
 
+  String get _serviceNotes =>
+      '${widget.booking.customerName} requested ${widget.booking.serviceName.toLowerCase()} '
+      'for ${widget.booking.vehicleInfo} on ${widget.booking.date} at ${widget.booking.time}. '
+      'Review diagnostics and customer messages before finalizing the work order.';
+
   @override
   void initState() {
     super.initState();
@@ -255,9 +260,9 @@ class _WsReqDetailScreenState extends State<WsReqDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      'Customer reported unusual engine behavior and requested a full inspection before proceeding with repair. Review diagnostics before finalizing the work order.',
-                      style: TextStyle(
+                    Text(
+                      _serviceNotes,
+                      style: const TextStyle(
                         fontSize: 13,
                         color: AC.t2,
                         height: 1.55,

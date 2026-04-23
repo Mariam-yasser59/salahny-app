@@ -11,6 +11,8 @@ import '../../shared/models/models.dart';
 
 export '../../shared/models/models.dart'
     show WsBookingData, WsServiceItem, WsPayoutData, WsMock, RequestStatus;
+export '../../shared/services/mock_data.dart'
+    show AppData, AppDataSource, WorkshopProfileData;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // DARK WORKSHOP COLORS

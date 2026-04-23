@@ -44,9 +44,10 @@ class _DashboardTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pending  = WsMock.bookings.where((b) => b.status == RequestStatus.pending).toList();
-    final active   = WsMock.bookings.where((b) => b.status == RequestStatus.inProgress || b.status == RequestStatus.repairInProgress).toList();
-    final today    = WsMock.bookings.where((b) => b.status != RequestStatus.cancelled).toList();
+    final profile = AppData.i.workshopProfile;
+    final pending  = AppData.i.workshopBookings.where((b) => b.status == RequestStatus.pending).toList();
+    final active   = AppData.i.workshopBookings.where((b) => b.status == RequestStatus.inProgress || b.status == RequestStatus.repairInProgress).toList();
+    final today    = AppData.i.workshopBookings.where((b) => b.status != RequestStatus.cancelled).toList();
 
     return Scaffold(
       backgroundColor: AC.bg,
@@ -79,14 +80,14 @@ class _DashboardTab extends StatelessWidget {
                             child: const Icon(Icons.car_repair_rounded, color: Colors.white, size: 24),
                           ),
                           const SizedBox(width: 14),
-                          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text('Good Morning 👋', style: TextStyle(fontSize: 12, color: Colors.white60)),
-                            Text('ProTech Auto Center',
-                                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.3)),
+                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            const Text('Good Morning', style: TextStyle(fontSize: 12, color: Colors.white60)),
+                            Text(profile.name,
+                                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.3)),
                           ])),
-                          _HeaderBadge('4.9', Icons.star_rounded, const Color(0xFFD4A843)),
+                          _HeaderBadge(profile.rating.toStringAsFixed(1), Icons.star_rounded, const Color(0xFFD4A843)),
                           const SizedBox(width: 8),
-                          _HeaderBadge('OPEN', Icons.circle, Colors.greenAccent),
+                          _HeaderBadge(profile.isOpen ? 'OPEN' : 'CLOSED', Icons.circle, profile.isOpen ? Colors.greenAccent : AC.error),
                         ]),
                         const SizedBox(height: 16),
                         // Quick stats row
@@ -130,7 +131,7 @@ class _DashboardTab extends StatelessWidget {
                         WsStatTile(label: 'Jobs Today',  value: '${today.length}', icon: Icons.build_rounded,        color: AC.red),
                         WsStatTile(label: 'Pending',     value: '${pending.length}', icon: Icons.hourglass_top_rounded, color: AC.warning),
                         WsStatTile(label: 'Revenue',     value: '\$${today.fold(0.0, (s, b) => s + b.price).toInt()}', icon: Icons.payments_rounded, color: AC.gold),
-                        WsStatTile(label: 'Rating',      value: '4.9', icon: Icons.star_rounded,          color: AC.success),
+                        WsStatTile(label: 'Rating',      value: profile.rating.toStringAsFixed(1), icon: Icons.star_rounded,          color: AC.success),
                       ],
                     ).animate().fadeIn(duration: 400.ms),
 
