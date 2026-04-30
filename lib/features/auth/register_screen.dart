@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/errors/app_error_handler.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
+import 'services/auth_service.dart';
 import '../../shared/services/mock_data.dart';
 import '../../shared/widgets/app_widgets.dart';
 
@@ -14,6 +15,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _fk=GlobalKey<FormState>();
   final _name=TextEditingController(); final _email=TextEditingController();
   final _phone=TextEditingController(); final _pass=TextEditingController();
+  final _auth=AuthService();
   bool _loading=false;
   String? _validateName(String? v) {
     final value = v?.trim() ?? '';
@@ -74,7 +76,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           AppField(label:'Password',hint:'At least 8 characters',ctrl:_pass,obscure:true,
             validator:_validatePassword),
         ].asMap().entries.map((e)=>e.value.runtimeType==SizedBox?e.value:
-          (e.value as Widget).animate().fadeIn(delay:(200+e.key*50).ms).slideY(begin:0.2,end:0)),
+          e.value.animate().fadeIn(delay:(200+e.key*50).ms).slideY(begin:0.2,end:0)),
         const SizedBox(height:32),
         AppBtn(label:'Create Account',loading:_loading,onTap:() async {
           if(!_fk.currentState!.validate()) return;
@@ -82,13 +84,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
           final ok = await AppErrorHandler.guard<bool>(
             context,
             () async {
-              await MockData.saveCurrentUser(
+              final role = await MockData.getRole() ?? 'driver';
+              final data = await _auth.register(
                 name: _name.text.trim(),
-                phone: _phone.text.replaceAll(RegExp(r'\D'), ''),
                 email: _email.text.trim(),
+                phone: _phone.text.replaceAll(RegExp(r'\D'), ''),
+                password: _pass.text,
+                role: role,
               );
-              await MockData.saveToken('mock_token_${DateTime.now().millisecondsSinceEpoch}');
-              await Future.delayed(1200.ms);
+              final user = data['user'] as Map<String, dynamic>? ?? const {};
+              await MockData.saveCurrentUser(
+                name: user['name']?.toString() ?? _name.text.trim(),
+                phone: user['phone']?.toString() ??
+                    _phone.text.replaceAll(RegExp(r'\D'), ''),
+                email: user['email']?.toString() ?? _email.text.trim(),
+                role: user['role']?.toString() ?? role,
+              );
               return true;
             },
             fallbackMessage: 'Could not create the account. Please try again.',

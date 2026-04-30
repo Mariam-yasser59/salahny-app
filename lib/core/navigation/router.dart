@@ -267,7 +267,12 @@ class _TrackingRouteScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final booking = AppData.i.bookings.first;
+    final bookingId = ModalRoute.of(context)?.settings.arguments as String?;
+    final bookings = AppData.i.bookings;
+    final booking = bookings.firstWhere(
+      (item) => item.id == bookingId,
+      orElse: () => bookings.first,
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFF0D0D0D),

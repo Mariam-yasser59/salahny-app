@@ -1,16 +1,47 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../workshops/services/workshop_service.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/services/mock_data.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
-class WorkshopsScreen extends StatelessWidget {
+class WorkshopsScreen extends StatefulWidget {
   const WorkshopsScreen({super.key});
+
+  @override
+  State<WorkshopsScreen> createState() => _WorkshopsScreenState();
+}
+
+class _WorkshopsScreenState extends State<WorkshopsScreen> {
+  final _api = WorkshopService();
+  List<WorkshopModel> _items = AppData.i.workshops;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final data = await _api.getWorkshops();
+      if (!mounted) return;
+      setState(() => _items = data);
+    } catch (_) {
+      if (mounted) setState(() => _items = AppData.i.workshops);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   @override Widget build(BuildContext context) => Scaffold(
     backgroundColor:AC.bg,
     appBar:SAppBar(title:'Nearby Workshops'),
     body:Column(children:[
+      if (_loading) const LinearProgressIndicator(minHeight: 2, color: AC.red),
       // Map placeholder
       Container(height:220,margin:const EdgeInsets.fromLTRB(24,8,24,0),
         decoration:BoxDecoration(borderRadius:Rd.lgA,gradient:const LinearGradient(colors:[Color(0xFF1A1A1A),Color(0xFF141414)])),
@@ -26,11 +57,11 @@ class WorkshopsScreen extends StatelessWidget {
         ])),
       const SizedBox(height:16),
       Padding(padding:const EdgeInsets.symmetric(horizontal:24),
-        child:SecHeader(title:'Available Now',sub:'${AppData.i.workshops.length} workshops within 10 miles')),
+        child:SecHeader(title:'Available Now',sub:'${_items.length} workshops within 10 miles')),
       const SizedBox(height:12),
       Expanded(child:ListView.separated(padding:const EdgeInsets.fromLTRB(24,0,24,24),
-        itemCount:AppData.i.workshops.length,separatorBuilder:(_,__)=>const SizedBox(height:12),
-        itemBuilder:(_,i){final w=AppData.i.workshops[i];
+        itemCount:_items.length,separatorBuilder:(_,__)=>const SizedBox(height:12),
+        itemBuilder:(_,i){final w=_items[i];
           return ACard(onTap:()=>Navigator.pushNamed(context,R.workshopDetail,arguments:w.id),
             padding:const EdgeInsets.all(16),child:Row(children:[
               Container(width:52,height:52,decoration:BoxDecoration(gradient:AC.redGrad,borderRadius:Rd.mdA),

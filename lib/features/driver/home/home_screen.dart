@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../bookings/services/booking_service.dart';
+import '../../workshops/services/workshop_service.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../../../shared/services/mock_data.dart';
@@ -17,12 +19,27 @@ class _HomeScreenState extends State<HomeScreen>
     with TickerProviderStateMixin {
   int _tab = 0;
   late AnimationController _nav;
+  final _workshopService = WorkshopService();
+  final _bookingService = BookingService();
 
   @override
   void initState() {
     super.initState();
     _nav = AnimationController(vsync: this, duration: 300.ms);
     _nav.forward();
+    _primeData();
+  }
+
+  Future<void> _primeData() async {
+    try {
+      await _workshopService.getWorkshops();
+      await _bookingService.getBookings();
+    } catch (_) {
+      // Keep local fallback data if backend requests fail.
+    }
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -278,7 +295,11 @@ class _HomeTab extends StatelessWidget {
                   title: 'Active Booking',
                   action: 'All',
                   onAction: () =>
-                      Navigator.pushNamed(context, R.bookingTrack),
+                      Navigator.pushNamed(
+                        context,
+                        R.bookingTrack,
+                        arguments: AppData.i.bookings.first.id,
+                      ),
                 ),
                 const SizedBox(height: 14),
                 const _ActiveBookingCard(),
@@ -520,7 +541,11 @@ class _ActiveBookingCard extends StatelessWidget {
           AppBtn(
             label: 'Track Booking',
             small: true,
-            onTap: () => Navigator.pushNamed(context, R.bookingTrack),
+            onTap: () => Navigator.pushNamed(
+              context,
+              R.bookingTrack,
+              arguments: b[0].id,
+            ),
             icon: const Icon(
               Icons.location_on_rounded,
               color: Colors.white,
@@ -1298,7 +1323,11 @@ class _BookingTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ACard(
     padding: const EdgeInsets.all(16),
-    onTap: () => Navigator.pushNamed(context, R.bookingTrack),
+    onTap: () => Navigator.pushNamed(
+      context,
+      R.bookingTrack,
+      arguments: b.id,
+    ),
     child: Column(
       children: [
         Row(

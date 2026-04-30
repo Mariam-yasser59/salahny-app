@@ -8,3 +8,5 @@ ios/Pods/
 ios/.symlinks/
 *.log
 *.lock
+backend/node_modules/
+backend/.env

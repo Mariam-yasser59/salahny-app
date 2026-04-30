@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../workshops/services/workshop_service.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/services/mock_data.dart';
 import '../../../shared/widgets/app_widgets.dart';
@@ -18,6 +19,8 @@ class BookServiceScreen extends StatefulWidget {
 class _BookServiceScreenState extends State<BookServiceScreen> {
   int _step = 0;
   String? _vehicleId, _workshopId, _date, _time;
+  final _workshopService = WorkshopService();
+  List<WorkshopModel> _workshops = AppData.i.workshops;
 
   late final _dates = List.generate(6, (i) {
     final date = DateTime.now().add(Duration(days: i));
@@ -46,8 +49,30 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
   bool get _canNext =>
       [_vehicleId != null, _workshopId != null, _date != null, _time != null][_step];
 
+  @override
+  void initState() {
+    super.initState();
+    _loadWorkshops();
+  }
+
+  Future<void> _loadWorkshops() async {
+    try {
+      final workshops = await _workshopService.getWorkshops();
+      if (!mounted) return;
+      setState(() => _workshops = workshops);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _workshops = AppData.i.workshops);
+    }
+  }
+
   ServiceModel _selectedService(BuildContext context) {
-    final serviceId = ModalRoute.of(context)?.settings.arguments as String?;
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final serviceId = args is String
+        ? args
+        : args is Map<String, dynamic>
+            ? args['serviceId']?.toString()
+            : null;
     return AppData.i.services.firstWhere(
       (service) => service.id == serviceId,
       orElse: () => AppData.i.services.first,
@@ -56,6 +81,13 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final presetWorkshopId = args is Map<String, dynamic>
+        ? args['workshopId']?.toString()
+        : null;
+    if (_workshopId == null && presetWorkshopId != null) {
+      _workshopId = presetWorkshopId;
+    }
     final selectedService = _selectedService(context);
 
     return Scaffold(
@@ -159,7 +191,7 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
                   ListView(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     children: [
-                      ...AppData.i.workshops.map(
+                      ..._workshops.map(
                             (w) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: GestureDetector(
@@ -389,9 +421,9 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
                             (item) => item.id == _vehicleId,
                             orElse: () => AppData.i.vehicles.first,
                           );
-                          final workshop = AppData.i.workshops.firstWhere(
+                          final workshop = _workshops.firstWhere(
                             (item) => item.id == _workshopId,
-                            orElse: () => AppData.i.workshops.first,
+                            orElse: () => _workshops.first,
                           );
                           final subtotal = selectedService.price;
                           final serviceFee = 5.0;

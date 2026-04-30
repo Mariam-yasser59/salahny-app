@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../../core/theme/app_theme.dart';
+
 import '../../../core/constants/app_constants.dart';
-import '../../../shared/models/models.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/services/mock_data.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
@@ -11,8 +11,12 @@ class WorkshopDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final w = AppData.i.workshops;
-    final ws = w[0];
+    final workshopId = ModalRoute.of(context)?.settings.arguments as String?;
+    final workshops = AppData.i.workshops;
+    final ws = workshops.firstWhere(
+      (item) => item.id == workshopId,
+      orElse: () => workshops.first,
+    );
 
     return Scaffold(
       backgroundColor: AC.bg,
@@ -24,9 +28,7 @@ class WorkshopDetailScreen extends StatelessWidget {
                 Container(
                   height: 220,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [AC.redDark, AC.red],
-                    ),
+                    gradient: LinearGradient(colors: [AC.redDark, AC.red]),
                   ),
                 ),
                 SafeArea(
@@ -191,9 +193,8 @@ class WorkshopDetailScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   const SecHeader(title: 'Services Offered'),
                   const SizedBox(height: 12),
-
                   ...AppData.i.services.take(4).map(
-                        (s) => Padding(
+                    (s) => Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Container(
                         padding: const EdgeInsets.all(14),
@@ -244,11 +245,14 @@ class WorkshopDetailScreen extends StatelessWidget {
                       ),
                     ).animate().fadeIn(delay: 400.ms),
                   ),
-
                   const SizedBox(height: 20),
                   AppBtn(
                     label: 'Book at This Workshop',
-                    onTap: () => Navigator.pushNamed(context, R.bookService),
+                    onTap: () => Navigator.pushNamed(
+                      context,
+                      R.bookService,
+                      arguments: {'workshopId': ws.id},
+                    ),
                     icon: const Icon(
                       Icons.calendar_month_rounded,
                       color: Colors.white,
@@ -271,21 +275,21 @@ class _BackBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: () => Navigator.pop(context),
-    child: Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        shape: BoxShape.circle,
-      ),
-      child: const Icon(
-        Icons.arrow_back_ios_new_rounded,
-        color: Colors.white,
-        size: 18,
-      ),
-    ),
-  );
+        onTap: () => Navigator.pop(context),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.15),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.white,
+            size: 18,
+          ),
+        ),
+      );
 }
 
 class _CRow extends StatelessWidget {
@@ -296,13 +300,15 @@ class _CRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-    children: [
-      Icon(icon, size: 16, color: AC.t3),
-      const SizedBox(width: 10),
-      Text(
-        text,
-        style: const TextStyle(fontSize: 13, color: AC.t2),
-      ),
-    ],
-  );
+        children: [
+          Icon(icon, size: 16, color: AC.t3),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 13, color: AC.t2),
+            ),
+          ),
+        ],
+      );
 }

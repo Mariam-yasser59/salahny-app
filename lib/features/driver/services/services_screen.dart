@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/services/mock_data.dart';
 import '../../../shared/widgets/app_widgets.dart';
+import '../../services/services/service_api.dart';
 
 class ServicesScreen extends StatefulWidget {
   const ServicesScreen({super.key});
@@ -15,7 +16,11 @@ class ServicesScreen extends StatefulWidget {
 }
 
 class _ServicesScreenState extends State<ServicesScreen> {
-  final _cats = [
+  final _api = ServiceApi();
+  List<ServiceModel> _items = AppData.i.services;
+  bool _loading = false;
+
+  final _cats = const [
     'All',
     'Maintenance',
     'Tires',
@@ -23,15 +28,32 @@ class _ServicesScreenState extends State<ServicesScreen> {
     'Cleaning',
     'Brakes',
     'HVAC',
-    'Electrical'
+    'Electrical',
   ];
 
   String _sel = 'All';
 
   List<ServiceModel> get _filtered =>
-      _sel == 'All'
-          ? AppData.i.services
-          : AppData.i.services.where((s) => s.category == _sel).toList();
+      _sel == 'All' ? _items : _items.where((s) => s.category == _sel).toList();
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final data = await _api.getServices();
+      if (!mounted) return;
+      setState(() => _items = data);
+    } catch (_) {
+      if (mounted) setState(() => _items = AppData.i.services);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +62,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
       appBar: SAppBar(title: 'All Services', showBack: true),
       body: Column(
         children: [
+          if (_loading)
+            const LinearProgressIndicator(minHeight: 2, color: AC.red),
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
             child: SizedBox(
@@ -81,8 +105,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
           Expanded(
             child: GridView.builder(
               padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
-              gridDelegate:
-              const SliverGridDelegateWithFixedCrossAxisCount(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 childAspectRatio: 0.86,
                 crossAxisSpacing: 14,
@@ -103,8 +126,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Container(
                               width: 46,
@@ -144,8 +166,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                         ),
                         const SizedBox(height: 10),
                         Row(
-                          mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
                               '\$${s.price.toInt()}',

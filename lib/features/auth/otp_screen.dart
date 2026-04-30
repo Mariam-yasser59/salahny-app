@@ -68,8 +68,7 @@ class _OtpScreenState extends State<OtpScreen> {
           context,
           () async {
             await Future.delayed(1200.ms);
-            await MockData.saveToken('tok_${DateTime.now().millisecondsSinceEpoch}');
-            return MockData.getRole();
+            return await MockData.getRole();
           },
           fallbackMessage: 'Could not verify the code. Please try again.',
         );

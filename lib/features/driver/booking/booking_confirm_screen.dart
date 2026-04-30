@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/errors/app_error_handler.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../bookings/services/booking_service.dart';
 import '../../../shared/services/mock_data.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
@@ -15,6 +16,7 @@ class BookingConfirmScreen extends StatefulWidget {
 }
 
 class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
+  final _bookingService = BookingService();
   bool _loading = false;
   late String _selectedPaymentId;
   final _formKey = GlobalKey<FormState>();
@@ -317,7 +319,21 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
                   context,
                   () async {
                     await MockData.saveBookingPaymentMethod(_selectedPaymentId);
-                    await Future.delayed(900.ms);
+                    final booking = await _bookingService.createBooking({
+                      'workshop': checkout.workshopId,
+                      'service': checkout.serviceName,
+                      'date': _resolveBookingDateTime(
+                        checkout.date,
+                        checkout.time,
+                      ).toIso8601String(),
+                    });
+                    await _bookingService.getBookings();
+                    if (!mounted) return false;
+                    Navigator.pushReplacementNamed(
+                      context,
+                      R.bookingTrack,
+                      arguments: booking.id,
+                    );
                     return true;
                   },
                   fallbackMessage:
@@ -325,9 +341,7 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
                 );
                 if (!mounted) return;
                 setState(() => _loading = false);
-                if (ok == true) {
-                  Navigator.pushReplacementNamed(context, R.bookingTrack);
-                }
+                if (ok != true) return;
               },
               icon: const Icon(
                 Icons.check_circle_rounded,
@@ -340,6 +354,49 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
         ),
       ),
     );
+  }
+
+  DateTime _resolveBookingDateTime(String label, String time) {
+    final now = DateTime.now();
+    DateTime baseDate;
+    if (label == 'Today') {
+      baseDate = now;
+    } else if (label == 'Tomorrow') {
+      baseDate = now.add(const Duration(days: 1));
+    } else {
+      final parts = label.split(' ');
+      const months = {
+        'Jan': 1,
+        'Feb': 2,
+        'Mar': 3,
+        'Apr': 4,
+        'May': 5,
+        'Jun': 6,
+        'Jul': 7,
+        'Aug': 8,
+        'Sep': 9,
+        'Oct': 10,
+        'Nov': 11,
+        'Dec': 12,
+      };
+      final month = months[parts.first] ?? now.month;
+      final day = int.tryParse(parts.last) ?? now.day;
+      baseDate = DateTime(now.year, month, day);
+    }
+
+    final segments = time.split(' ');
+    final clock = segments.first.split(':');
+    var hour = int.tryParse(clock.first) ?? 9;
+    final minute = int.tryParse(clock.last) ?? 0;
+    final suffix = segments.length > 1 ? segments.last : 'AM';
+
+    if (suffix == 'PM' && hour < 12) {
+      hour += 12;
+    } else if (suffix == 'AM' && hour == 12) {
+      hour = 0;
+    }
+
+    return DateTime(baseDate.year, baseDate.month, baseDate.day, hour, minute);
   }
 }
 

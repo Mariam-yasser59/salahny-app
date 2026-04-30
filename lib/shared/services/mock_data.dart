@@ -128,6 +128,10 @@ class MockData {
   static UserModel _currentUser = UserModel.mock;
   static List<VehicleModel> _vehicles = List.of(VehicleModel.mockList);
   static BookingCheckoutData? _bookingCheckout;
+  static List<WorkshopModel>? _remoteWorkshops;
+  static List<BookingModel>? _remoteBookings;
+  static List<ServiceModel>? _remoteServices;
+  static List<PackageModel>? _remotePackages;
 
   static List<DriverUser> _drivers = [
     DriverUser(
@@ -363,17 +367,30 @@ class MockData {
       List.unmodifiable(_activityLogs);
   static AdminSettingsData get adminSettings => _adminSettings;
 
-  static List<ServiceModel> get services => _managedServices
-      .where((service) => service.isEnabled)
-      .map((service) => service.toServiceModel())
-      .toList(growable: false);
+  static List<ServiceModel> get services {
+    if (_remoteServices != null) {
+      return List.unmodifiable(_remoteServices!);
+    }
+    return _managedServices
+        .where((service) => service.isEnabled)
+        .map((service) => service.toServiceModel())
+        .toList(growable: false);
+  }
 
-  static List<PackageModel> get packages => _managedPackages
-      .where((pkg) => pkg.isEnabled)
-      .map((pkg) => pkg.toPackageModel())
-      .toList(growable: false);
+  static List<PackageModel> get packages {
+    if (_remotePackages != null) {
+      return List.unmodifiable(_remotePackages!);
+    }
+    return _managedPackages
+        .where((pkg) => pkg.isEnabled)
+        .map((pkg) => pkg.toPackageModel())
+        .toList(growable: false);
+  }
 
   static List<WorkshopModel> get workshops {
+    if (_remoteWorkshops != null) {
+      return List.unmodifiable(_remoteWorkshops!);
+    }
     final active = _adminWorkshops
         .where(
           (workshop) =>
@@ -388,10 +405,14 @@ class MockData {
     );
   }
 
-  static List<BookingModel> get bookings =>
-      _adminBookings.map((booking) => booking.toBookingModel()).toList(
-            growable: false,
-          );
+  static List<BookingModel> get bookings {
+    if (_remoteBookings != null) {
+      return List.unmodifiable(_remoteBookings!);
+    }
+    return _adminBookings.map((booking) => booking.toBookingModel()).toList(
+          growable: false,
+        );
+  }
 
   static WorkshopProfileData get workshopProfile {
     final workshop = _adminWorkshops.firstWhere(
@@ -547,6 +568,26 @@ class MockData {
     }
   }
 
+  static void setCurrentUser(UserModel user) {
+    _currentUser = user;
+  }
+
+  static void setRemoteWorkshops(List<WorkshopModel> workshops) {
+    _remoteWorkshops = List<WorkshopModel>.from(workshops);
+  }
+
+  static void setRemoteBookings(List<BookingModel> bookings) {
+    _remoteBookings = List<BookingModel>.from(bookings);
+  }
+
+  static void setRemoteServices(List<ServiceModel> services) {
+    _remoteServices = List<ServiceModel>.from(services);
+  }
+
+  static void setRemotePackages(List<PackageModel> packages) {
+    _remotePackages = List<PackageModel>.from(packages);
+  }
+
   static Future<void> saveVehicle({
     required String make,
     required String model,
@@ -641,6 +682,10 @@ class MockData {
     final p = await SharedPreferences.getInstance();
     await p.remove('auth_token');
     await p.remove('user_role');
+    _remoteWorkshops = null;
+    _remoteBookings = null;
+    _remoteServices = null;
+    _remotePackages = null;
   }
 
   static DriverUser? driverById(String id) {

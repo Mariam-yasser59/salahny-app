@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/errors/app_error_handler.dart';
 import '../../core/theme/app_theme.dart';
+import 'services/auth_service.dart';
 import '../../shared/services/mock_data.dart';
 import '../../shared/widgets/app_widgets.dart';
 
@@ -18,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _fk = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _pass = TextEditingController();
+  final _auth = AuthService();
 
   bool _loading = false;
   bool _showPass = false;
@@ -30,24 +32,43 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     if (!_fk.currentState!.validate()) return;
 
+    if (_isAdminAttempt) {
+      setState(() => _loading = true);
+      final ok = await AppErrorHandler.guard<bool>(
+        context,
+        () async {
+          await MockData.saveRole('admin');
+          await MockData.saveToken('admin_${DateTime.now().millisecondsSinceEpoch}');
+          return true;
+        },
+        fallbackMessage: 'Could not sign you in right now.',
+      );
+      if (!mounted) return;
+      setState(() => _loading = false);
+      if (ok == true) {
+        Navigator.pushReplacementNamed(context, R.saDashboard);
+      }
+      return;
+    }
+
     setState(() => _loading = true);
     final role = await AppErrorHandler.guard<String?>(
       context,
       () async {
-        await Future.delayed(1400.ms);
-        final isAdminLogin = MockData.validateAdminCredentials(
-          _email.text.trim(),
-          _pass.text,
+        final response = await _auth.login(
+          email: _email.text.trim(),
+          password: _pass.text,
         );
-        final nextRole = isAdminLogin ? 'admin' : await MockData.getRole();
-        if (isAdminLogin) {
-          await MockData.saveRole('admin');
+        final user = response['user'] as Map<String, dynamic>?;
+        if (user != null) {
+          await MockData.saveCurrentUser(
+            name: user['name']?.toString() ?? '',
+            phone: user['phone']?.toString() ?? '',
+            email: user['email']?.toString() ?? _email.text.trim(),
+            role: user['role']?.toString() ?? 'driver',
+          );
         }
-        await MockData.loadCurrentUser();
-        await MockData.saveToken(
-          'mock_token_${DateTime.now().millisecondsSinceEpoch}',
-        );
-        return nextRole;
+        return user?['role']?.toString() ?? 'driver';
       },
       fallbackMessage: 'Could not sign you in right now.',
     );
