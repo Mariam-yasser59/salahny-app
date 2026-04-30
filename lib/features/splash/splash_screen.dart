@@ -98,10 +98,10 @@ class _SplashScreenState extends State<SplashScreen>
     // ✅ مهم:
     // مهما كان فيه token أو لا، متروحيش على home مباشرة من splash.
     // لازم بعد الـ splash يروح يا onboarding يا roleSelect.
-    if (seen) {
-      Navigator.pushReplacementNamed(context, R.roleSelect);
-    } else {
+    if (!seen) {
       Navigator.pushReplacementNamed(context, R.onboarding);
+    } else {
+      Navigator.pushReplacementNamed(context, R.roleSelect);
     }
   }
 

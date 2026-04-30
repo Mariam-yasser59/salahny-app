@@ -12,6 +12,7 @@ import '../../features/auth/login_screen.dart';
 import '../../features/auth/register_screen.dart';
 import '../../features/auth/otp_screen.dart';
 import '../../features/auth/forgot_password_screen.dart';
+import '../../features/admin/admin_login_screen.dart';
 
 // Driver
 import '../../features/driver/home/home_screen.dart';
@@ -53,6 +54,15 @@ import '../../features/workshop/ws_profile_screen.dart';
 import '../../features/workshop/ws_diagnostics_screen.dart';
 import '../../features/workshop/ws_ai_report_screen.dart';
 import '../../features/workshop/ws_chat_screen.dart';
+import '../../features/admin/pending_approvals_screen.dart';
+import '../../features/admin/drivers_management_screen.dart';
+import '../../features/admin/workshops_management_screen.dart';
+import '../../features/admin/bookings_management_screen.dart';
+import '../../features/admin/services_management_screen.dart';
+import '../../features/admin/packages_management_screen.dart';
+import '../../features/admin/activity_logs_screen.dart';
+import '../../features/admin/admin_settings_screen.dart';
+import '../../features/admin/super_admin_shell.dart';
 
 Route<dynamic> onGenerateRoute(RouteSettings s) {
   Widget page;
@@ -81,6 +91,9 @@ Route<dynamic> onGenerateRoute(RouteSettings s) {
       break;
     case R.forgotPassword:
       page = const ForgotPasswordScreen();
+      break;
+    case R.adminLogin:
+      page = const AdminLoginScreen();
       break;
 
   // ─── Driver App ──────────────────────────────────────────────
@@ -196,6 +209,34 @@ Route<dynamic> onGenerateRoute(RouteSettings s) {
         bookingId: args['bookingId'] ?? '',
         customerName: args['customerName'] ?? 'Customer',
       );
+      break;
+
+    case R.saDashboard:
+      page = const SuperAdminShell();
+      break;
+    case R.saApprovals:
+      page = const PendingApprovalsScreen();
+      break;
+    case R.saDrivers:
+      page = const DriversManagementScreen();
+      break;
+    case R.saWorkshops:
+      page = const WorkshopsManagementScreen();
+      break;
+    case R.saBookings:
+      page = const BookingsManagementScreen();
+      break;
+    case R.saServices:
+      page = const ServicesManagementScreen();
+      break;
+    case R.saPackages:
+      page = const PackagesManagementScreen();
+      break;
+    case R.saLogs:
+      page = const ActivityLogsScreen();
+      break;
+    case R.saSettings:
+      page = const AdminSettingsScreen();
       break;
 
     default:

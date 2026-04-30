@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../core/constants/app_constants.dart';
 import '../../core/errors/app_error_handler.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/constants/app_constants.dart';
 import '../../shared/services/mock_data.dart';
 import '../../shared/widgets/app_widgets.dart';
 
@@ -22,6 +22,11 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
   bool _showPass = false;
 
+  bool get _isAdminAttempt => MockData.validateAdminCredentials(
+        _email.text.trim(),
+        _pass.text,
+      );
+
   Future<void> _login() async {
     if (!_fk.currentState!.validate()) return;
 
@@ -30,7 +35,14 @@ class _LoginScreenState extends State<LoginScreen> {
       context,
       () async {
         await Future.delayed(1400.ms);
-        final nextRole = await MockData.getRole();
+        final isAdminLogin = MockData.validateAdminCredentials(
+          _email.text.trim(),
+          _pass.text,
+        );
+        final nextRole = isAdminLogin ? 'admin' : await MockData.getRole();
+        if (isAdminLogin) {
+          await MockData.saveRole('admin');
+        }
         await MockData.loadCurrentUser();
         await MockData.saveToken(
           'mock_token_${DateTime.now().millisecondsSinceEpoch}',
@@ -46,7 +58,11 @@ class _LoginScreenState extends State<LoginScreen> {
     if (role == null) return;
     Navigator.pushReplacementNamed(
       context,
-      role == 'workshop' ? R.wsDashboard : R.home,
+      role == 'workshop'
+          ? R.wsDashboard
+          : role == 'admin'
+              ? R.saDashboard
+              : R.home,
     );
   }
 
@@ -109,7 +125,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 36),
                     const Text(
-                      'Welcome back 👋',
+                      'Welcome back',
                       style: TextStyle(
                         fontSize: 30,
                         fontWeight: FontWeight.w800,
@@ -138,8 +154,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         size: 18,
                         color: AC.t3,
                       ),
-                      validator: (v) =>
-                      v == null || !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v.trim())
+                      validator: (v) => v == null ||
+                              !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v.trim())
                           ? 'Enter a valid email'
                           : null,
                     ).animate().fadeIn(delay: 200.ms).slideY(
@@ -149,7 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 18),
                     AppField(
                       label: 'Password',
-                      hint: '••••••••',
+                      hint: 'Enter your password',
                       ctrl: _pass,
                       obscure: !_showPass,
                       prefix: const Icon(
@@ -169,8 +185,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       validator: (v) {
                         final value = v ?? '';
+                        if (_isAdminAttempt) return null;
                         if (value.length < 8) return 'Use at least 8 characters';
-                        if (!RegExp(r'[A-Z]').hasMatch(value)) return 'Add one uppercase letter';
+                        if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                          return 'Add one uppercase letter';
+                        }
                         if (!RegExp(r'\d').hasMatch(value)) return 'Add one number';
                         return null;
                       },
@@ -206,9 +225,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 24),
                     Row(
                       children: const [
-                        Expanded(
-                          child: Divider(color: AC.border),
-                        ),
+                        Expanded(child: Divider(color: AC.border)),
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 16),
                           child: Text(
@@ -219,9 +236,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
-                        Expanded(
-                          child: Divider(color: AC.border),
-                        ),
+                        Expanded(child: Divider(color: AC.border)),
                       ],
                     ).animate().fadeIn(delay: 450.ms),
                     const SizedBox(height: 20),

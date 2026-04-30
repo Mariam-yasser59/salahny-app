@@ -30,6 +30,7 @@ class R {
   static const String register = '/register';
   static const String otp = '/otp';
   static const String forgotPassword = '/forgot-password';
+  static const String adminLogin = '/admin-login';
 
   // Driver App
   static const String home = '/home';
@@ -72,4 +73,15 @@ class R {
   static const String wsDiagnostics = '/ws/diagnostics';
   static const String wsAiReport = '/ws/ai-report';
   static const String wsChat = '/ws/chat';
+
+  // Super Admin App
+  static const String saDashboard = '/admin/dashboard';
+  static const String saApprovals = '/admin/approvals';
+  static const String saDrivers = '/admin/drivers';
+  static const String saWorkshops = '/admin/workshops';
+  static const String saBookings = '/admin/bookings';
+  static const String saServices = '/admin/services';
+  static const String saPackages = '/admin/packages';
+  static const String saLogs = '/admin/logs';
+  static const String saSettings = '/admin/settings';
 }

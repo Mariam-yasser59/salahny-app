@@ -10,17 +10,16 @@ import 'core/navigation/router.dart';
 import 'shared/services/mock_data.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  FlutterError.onError = (details) {
-    FlutterError.presentError(details);
-    AppErrorHandler.report(details.exception, details.stack);
-  };
-  PlatformDispatcher.instance.onError = (error, stackTrace) {
-    AppErrorHandler.report(error, stackTrace);
-    return true;
-  };
-
   await runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    FlutterError.onError = (details) {
+      FlutterError.presentError(details);
+      AppErrorHandler.report(details.exception, details.stack);
+    };
+    PlatformDispatcher.instance.onError = (error, stackTrace) {
+      AppErrorHandler.report(error, stackTrace);
+      return true;
+    };
     await MockData.loadCurrentUser();
     await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
