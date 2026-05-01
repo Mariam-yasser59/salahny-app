@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/errors/app_error_handler.dart';
 import '../../../core/theme/app_theme.dart';
+import 'services/package_payment_service.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/services/mock_data.dart';
 import '../../../shared/widgets/app_widgets.dart';
@@ -18,6 +19,7 @@ class CheckoutScreen extends StatefulWidget {
 class _CheckoutScreenState extends State<CheckoutScreen> {
   int _method = 0;
   bool _loading = false;
+  final _paymentService = PackagePaymentService();
 
   static const _methods = [
     ('💳', 'Credit / Debit Card'),
@@ -169,7 +171,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 final ok = await AppErrorHandler.guard<bool>(
                   context,
                   () async {
-                    await Future.delayed(1500.ms);
+                    await _paymentService.purchasePackage(
+                      packageId: pkg.id,
+                      paymentMethod: _methods[_method].$2,
+                    );
                     return true;
                   },
                   fallbackMessage:

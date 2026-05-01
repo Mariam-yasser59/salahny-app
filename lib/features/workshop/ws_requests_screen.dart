@@ -2,7 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../core/errors/app_error_handler.dart';
 import '_ws_shared.dart';
+import 'services/workshop_portal_service.dart';
 import 'ws_req_detail_screen.dart';
 import '../../core/theme/app_theme.dart';
 
@@ -15,17 +17,43 @@ class WsRequestsScreen extends StatefulWidget {
 class _WsRequestsScreenState extends State<WsRequestsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
+  final _service = WorkshopPortalService();
 
   @override
   void initState() {
     super.initState();
     _tab = TabController(length: 3, vsync: this);
+    _refresh();
   }
 
   @override
   void dispose() {
     _tab.dispose();
     super.dispose();
+  }
+
+  Future<void> _refresh() async {
+    await AppErrorHandler.guard<void>(
+      context,
+      () => _service.getBookings(),
+      fallbackMessage: 'Could not load workshop requests right now.',
+    );
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  Future<void> _updateStatus(WsBookingData booking, String status) async {
+    final ok = await AppErrorHandler.guard<bool>(
+      context,
+      () async {
+        await _service.updateBookingStatus(booking.id, status);
+        await _service.getBookings();
+        return true;
+      },
+      fallbackMessage: 'Could not update this request right now.',
+    );
+    if (!mounted || ok != true) return;
+    setState(() {});
   }
 
   @override
@@ -83,14 +111,29 @@ class _WsRequestsScreenState extends State<WsRequestsScreen>
         // ── Tab views ─────────────────────────────────────────────────────
         Expanded(
           child: TabBarView(
-            controller: _tab,
-            children: [
-              _BookingList(bookings: pending,  emptyMsg: 'No pending requests', showActions: true),
-              _BookingList(bookings: accepted, emptyMsg: 'No accepted requests', showActions: false),
-              _BookingList(bookings: done,     emptyMsg: 'No completed requests', showActions: false),
-            ],
+              controller: _tab,
+              children: [
+              _BookingList(
+                bookings: pending,
+                emptyMsg: 'No pending requests',
+                showActions: true,
+                onStatusChange: _updateStatus,
+              ),
+              _BookingList(
+                bookings: accepted,
+                emptyMsg: 'No accepted requests',
+                showActions: false,
+                onStatusChange: _updateStatus,
+              ),
+              _BookingList(
+                bookings: done,
+                emptyMsg: 'No completed requests',
+                showActions: false,
+                onStatusChange: _updateStatus,
+              ),
+              ],
+            ),
           ),
-        ),
       ]),
     );
   }
@@ -100,7 +143,13 @@ class _BookingList extends StatelessWidget {
   final List<WsBookingData> bookings;
   final String emptyMsg;
   final bool showActions;
-  const _BookingList({required this.bookings, required this.emptyMsg, required this.showActions});
+  final Future<void> Function(WsBookingData booking, String status)? onStatusChange;
+  const _BookingList({
+    required this.bookings,
+    required this.emptyMsg,
+    required this.showActions,
+    this.onStatusChange,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -119,7 +168,16 @@ class _BookingList extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 80),
       itemCount: bookings.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (_, i) => _ReqCard(booking: bookings[i], showActions: showActions)
+      itemBuilder: (_, i) => _ReqCard(
+        booking: bookings[i],
+        showActions: showActions,
+        onAccept: onStatusChange == null
+            ? null
+            : () => onStatusChange!(bookings[i], 'accepted'),
+        onDecline: onStatusChange == null
+            ? null
+            : () => onStatusChange!(bookings[i], 'cancelled'),
+      )
           .animate()
           .fadeIn(duration: 300.ms, delay: (i * 50).ms),
     );
@@ -129,7 +187,14 @@ class _BookingList extends StatelessWidget {
 class _ReqCard extends StatelessWidget {
   final WsBookingData booking;
   final bool showActions;
-  const _ReqCard({required this.booking, required this.showActions});
+  final VoidCallback? onAccept;
+  final VoidCallback? onDecline;
+  const _ReqCard({
+    required this.booking,
+    required this.showActions,
+    this.onAccept,
+    this.onDecline,
+  });
 
   @override
   Widget build(BuildContext context) => WsCard(
@@ -160,9 +225,9 @@ class _ReqCard extends StatelessWidget {
         const WsDiv(),
         const SizedBox(height: 12),
         Row(children: [
-          Expanded(child: WsBtn(label: 'Accept',  small: true, gold: true,    onTap: () {})),
+          Expanded(child: WsBtn(label: 'Accept',  small: true, gold: true,    onTap: onAccept ?? () {})),
           const SizedBox(width: 10),
-          Expanded(child: WsBtn(label: 'Decline', small: true, outline: true, onTap: () {})),
+          Expanded(child: WsBtn(label: 'Decline', small: true, outline: true, onTap: onDecline ?? () {})),
         ]),
       ],
     ]),

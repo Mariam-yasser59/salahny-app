@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/errors/app_error_handler.dart';
+import '../../../shared/services/mock_data.dart';
 import '../../../shared/widgets/app_widgets.dart';
+import 'services/diagnostics_service.dart';
 
 class DiagnosticsScreen extends StatefulWidget {
   const DiagnosticsScreen({super.key});
@@ -11,11 +14,27 @@ class DiagnosticsScreen extends StatefulWidget {
 class _DiagnosticsScreenState extends State<DiagnosticsScreen> with SingleTickerProviderStateMixin {
   late AnimationController _scan;
   bool _scanning = false;
+  final _service = DiagnosticsService();
   @override void initState(){ super.initState(); _scan=AnimationController(vsync:this,duration:2000.ms); }
   @override void dispose(){ _scan.dispose(); super.dispose(); }
-  void _start(){ setState(()=>_scanning=true); _scan.repeat();
-    Future.delayed(3500.ms,(){if(mounted){setState(()=>_scanning=false);_scan.stop();_scan.reset();
-      Navigator.pushNamed(context,R.diagResult);}});}
+  Future<void> _start() async {
+    setState(()=>_scanning=true);
+    _scan.repeat();
+    final report = await AppErrorHandler.guard(
+      context,
+      () => _service.scan(
+        vehicleId: MockData.vehicles.isEmpty ? 'default_vehicle' : MockData.vehicles.first.id,
+      ),
+      fallbackMessage: 'The diagnostic scan could not be completed.',
+    );
+    if(!mounted) return;
+    setState(()=>_scanning=false);
+    _scan.stop();
+    _scan.reset();
+    if(report != null){
+      Navigator.pushNamed(context,R.diagResult);
+    }
+  }
   @override Widget build(BuildContext context) => Scaffold(
     backgroundColor:AC.bg,
     appBar:SAppBar(title:'AI Diagnostics'),

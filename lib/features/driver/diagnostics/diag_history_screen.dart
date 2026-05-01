@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../../core/errors/app_error_handler.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/services/mock_data.dart';
 import '../../../shared/widgets/app_widgets.dart';
+import 'services/diagnostics_service.dart';
 
 class DiagHistoryScreen extends StatefulWidget {
   const DiagHistoryScreen({super.key});
@@ -16,6 +18,23 @@ class DiagHistoryScreen extends StatefulWidget {
 class _DiagHistoryScreenState extends State<DiagHistoryScreen> {
   String _filter = 'All';
   final _filters = ['All', 'Healthy', 'Warning', 'Critical'];
+  final _service = DiagnosticsService();
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    await AppErrorHandler.guard<void>(
+      context,
+      () => _service.getHistory(),
+      fallbackMessage: 'Could not load diagnostic history right now.',
+    );
+    if (!mounted) return;
+    setState(() {});
+  }
 
   List<DiagnosticReport> get _filtered {
     if (_filter == 'All') return AppData.i.diagnosticHistory;
@@ -115,7 +134,10 @@ class _HistoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: () => Navigator.pushNamed(context, R.diagResult),
+    onTap: () {
+      MockData.setLatestDiagnosticReport(report);
+      Navigator.pushNamed(context, R.diagResult);
+    },
     child: Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(

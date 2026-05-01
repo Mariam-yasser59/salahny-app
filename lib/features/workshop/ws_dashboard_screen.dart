@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'services/workshop_portal_service.dart';
 import 'ws_requests_screen.dart';
 import 'ws_active_jobs_screen.dart';
 import 'ws_diagnostics_screen.dart';
@@ -18,6 +19,7 @@ class WsDashboardScreen extends StatefulWidget {
 
 class _WsDashboardScreenState extends State<WsDashboardScreen> {
   int _index = 0;
+  final _service = WorkshopPortalService();
 
   late final List<Widget> _pages = const [
     _DashboardTab(),
@@ -26,6 +28,18 @@ class _WsDashboardScreenState extends State<WsDashboardScreen> {
     WsDiagnosticsScreen(),
     WsProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPortal();
+  }
+
+  Future<void> _loadPortal() async {
+    await _service.syncDashboard();
+    if (!mounted) return;
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(

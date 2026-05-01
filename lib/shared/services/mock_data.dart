@@ -75,22 +75,22 @@ class MockAppDataSource implements AppDataSource {
   List<NotificationModel> get notifications => MockData.notifications;
 
   @override
-  DiagnosticReport get latestDiagnosticReport => DiagnosticReport.mock;
+  DiagnosticReport get latestDiagnosticReport => MockData.latestDiagnosticReport;
 
   @override
-  List<DiagnosticReport> get diagnosticHistory => DiagnosticReport.mockHistory;
+  List<DiagnosticReport> get diagnosticHistory => MockData.diagnosticHistory;
 
   @override
-  DiagnosticModel get diagnosticSummary => DiagnosticModel.mock;
+  DiagnosticModel get diagnosticSummary => MockData.diagnosticSummary;
 
   @override
-  List<WsBookingData> get workshopBookings => WsMock.bookings;
+  List<WsBookingData> get workshopBookings => MockData.workshopBookings;
 
   @override
-  List<WsServiceItem> get workshopServices => WsMock.services;
+  List<WsServiceItem> get workshopServices => MockData.workshopServices;
 
   @override
-  List<WsPayoutData> get workshopPayouts => WsMock.payouts;
+  List<WsPayoutData> get workshopPayouts => MockData.workshopPayouts;
 
   @override
   WorkshopProfileData get workshopProfile => MockData.workshopProfile;
@@ -132,6 +132,17 @@ class MockData {
   static List<BookingModel>? _remoteBookings;
   static List<ServiceModel>? _remoteServices;
   static List<PackageModel>? _remotePackages;
+  static List<DriverUser>? _remoteDrivers;
+  static List<WorkshopUser>? _remoteAdminWorkshops;
+  static List<AdminBooking>? _remoteAdminBookings;
+  static List<ManagedService>? _remoteManagedServices;
+  static List<ManagedPackage>? _remoteManagedPackages;
+  static List<ActivityLogEntry>? _remoteActivityLogs;
+  static DiagnosticReport? _remoteLatestDiagnosticReport;
+  static List<DiagnosticReport>? _remoteDiagnosticHistory;
+  static List<WsBookingData>? _remoteWorkshopBookings;
+  static List<WsServiceItem>? _remoteWorkshopServices;
+  static WorkshopProfileData? _remoteWorkshopProfile;
 
   static List<DriverUser> _drivers = [
     DriverUser(
@@ -346,25 +357,28 @@ class MockData {
   static BookingCheckoutData get bookingCheckout =>
       _bookingCheckout ?? _buildDefaultBookingCheckout();
 
-  static List<DriverUser> get drivers => List.unmodifiable(_drivers);
+  static List<DriverUser> get drivers =>
+      List.unmodifiable(_remoteDrivers ?? _drivers);
   static List<DriverUser> get pendingDrivers => List.unmodifiable(
-        _drivers.where((d) => d.status == AdminAccountStatus.pending).toList(),
+        drivers.where((d) => d.status == AdminAccountStatus.pending).toList(),
       );
 
-  static List<WorkshopUser> get adminWorkshops => List.unmodifiable(_adminWorkshops);
+  static List<WorkshopUser> get adminWorkshops =>
+      List.unmodifiable(_remoteAdminWorkshops ?? _adminWorkshops);
   static List<WorkshopUser> get pendingWorkshops => List.unmodifiable(
-        _adminWorkshops
+        adminWorkshops
             .where((w) => w.status == AdminAccountStatus.pending)
             .toList(),
       );
 
   static List<ManagedService> get managedServices =>
-      List.unmodifiable(_managedServices);
+      List.unmodifiable(_remoteManagedServices ?? _managedServices);
   static List<ManagedPackage> get managedPackages =>
-      List.unmodifiable(_managedPackages);
-  static List<AdminBooking> get adminBookings => List.unmodifiable(_adminBookings);
+      List.unmodifiable(_remoteManagedPackages ?? _managedPackages);
+  static List<AdminBooking> get adminBookings =>
+      List.unmodifiable(_remoteAdminBookings ?? _adminBookings);
   static List<ActivityLogEntry> get activityLogs =>
-      List.unmodifiable(_activityLogs);
+      List.unmodifiable(_remoteActivityLogs ?? _activityLogs);
   static AdminSettingsData get adminSettings => _adminSettings;
 
   static List<ServiceModel> get services {
@@ -415,6 +429,9 @@ class MockData {
   }
 
   static WorkshopProfileData get workshopProfile {
+    if (_remoteWorkshopProfile != null) {
+      return _remoteWorkshopProfile!;
+    }
     final workshop = _adminWorkshops.firstWhere(
       (item) => item.status == AdminAccountStatus.active,
       orElse: () => _adminWorkshops.first,
@@ -439,7 +456,71 @@ class MockData {
     );
   }
 
-  static int get totalRevenue => _adminBookings.fold<int>(
+  static List<WsBookingData> get workshopBookings =>
+      List.unmodifiable(_remoteWorkshopBookings ?? WsMock.bookings);
+
+  static List<WsServiceItem> get workshopServices {
+    if (_remoteWorkshopServices != null) {
+      return List.unmodifiable(_remoteWorkshopServices!);
+    }
+    if (_remoteServices != null) {
+      return _remoteServices!
+          .map(
+            (service) => WsServiceItem(
+              emoji: service.emoji,
+              name: service.name,
+              durationMins: service.durationMins,
+              price: service.price,
+            ),
+          )
+          .toList(growable: false);
+    }
+    return WsMock.services;
+  }
+
+  static List<WsPayoutData> get workshopPayouts {
+    final bookings = workshopBookings
+        .where((item) => item.status != RequestStatus.cancelled)
+        .toList();
+    if (bookings.isEmpty) {
+      return WsMock.payouts;
+    }
+    final total = bookings.fold<double>(0, (sum, item) => sum + item.price);
+    return [
+      WsPayoutData(period: 'Current Period', amount: total),
+      WsPayoutData(period: 'Previous Period', amount: total * 0.82),
+      WsPayoutData(period: 'Two Periods Ago', amount: total * 0.74),
+    ];
+  }
+
+  static DiagnosticReport get latestDiagnosticReport =>
+      _remoteLatestDiagnosticReport ??
+      (_remoteDiagnosticHistory?.isNotEmpty == true
+          ? _remoteDiagnosticHistory!.first
+          : DiagnosticReport.mock);
+
+  static List<DiagnosticReport> get diagnosticHistory =>
+      List.unmodifiable(_remoteDiagnosticHistory ?? DiagnosticReport.mockHistory);
+
+  static DiagnosticModel get diagnosticSummary {
+    final report = latestDiagnosticReport;
+    return DiagnosticModel(
+      id: report.id,
+      vehicleId: report.vehicleId,
+      date: report.date,
+      summary: report.summary,
+      health: report.health,
+      codes: report.faultCodes
+          .map((code) => '${code.code} - ${code.description}')
+          .toList(growable: false),
+      recommendations: List<String>.from(report.recommendations),
+      vitals: {
+        for (final vital in report.vitals) vital.key: vital.value,
+      },
+    );
+  }
+
+  static int get totalRevenue => adminBookings.fold<int>(
         0,
         (sum, booking) => sum + booking.total.toInt(),
       );
@@ -588,6 +669,56 @@ class MockData {
     _remotePackages = List<PackageModel>.from(packages);
   }
 
+  static void setRemoteAdminDrivers(List<DriverUser> drivers) {
+    _remoteDrivers = List<DriverUser>.from(drivers);
+  }
+
+  static void setRemoteAdminWorkshops(List<WorkshopUser> workshops) {
+    _remoteAdminWorkshops = List<WorkshopUser>.from(workshops);
+  }
+
+  static void setRemoteAdminBookings(List<AdminBooking> bookings) {
+    _remoteAdminBookings = List<AdminBooking>.from(bookings);
+  }
+
+  static void setRemoteManagedServices(List<ManagedService> services) {
+    _remoteManagedServices = List<ManagedService>.from(services);
+  }
+
+  static void setRemoteManagedPackages(List<ManagedPackage> packages) {
+    _remoteManagedPackages = List<ManagedPackage>.from(packages);
+  }
+
+  static void setRemoteActivityLogs(List<ActivityLogEntry> logs) {
+    _remoteActivityLogs = List<ActivityLogEntry>.from(logs);
+  }
+
+  static void setRemoteDiagnostics(List<DiagnosticReport> reports) {
+    _remoteDiagnosticHistory = List<DiagnosticReport>.from(reports);
+    if (reports.isNotEmpty) {
+      _remoteLatestDiagnosticReport = reports.first;
+    }
+  }
+
+  static void setLatestDiagnosticReport(DiagnosticReport report) {
+    _remoteLatestDiagnosticReport = report;
+    final next = [...?_remoteDiagnosticHistory];
+    next.removeWhere((item) => item.id == report.id);
+    _remoteDiagnosticHistory = [report, ...next];
+  }
+
+  static void setRemoteWorkshopPortal({
+    required WorkshopProfileData profile,
+    required List<WsBookingData> bookings,
+    List<WsServiceItem>? services,
+  }) {
+    _remoteWorkshopProfile = profile;
+    _remoteWorkshopBookings = List<WsBookingData>.from(bookings);
+    if (services != null) {
+      _remoteWorkshopServices = List<WsServiceItem>.from(services);
+    }
+  }
+
   static Future<void> saveVehicle({
     required String make,
     required String model,
@@ -686,24 +817,35 @@ class MockData {
     _remoteBookings = null;
     _remoteServices = null;
     _remotePackages = null;
+    _remoteDrivers = null;
+    _remoteAdminWorkshops = null;
+    _remoteAdminBookings = null;
+    _remoteManagedServices = null;
+    _remoteManagedPackages = null;
+    _remoteActivityLogs = null;
+    _remoteLatestDiagnosticReport = null;
+    _remoteDiagnosticHistory = null;
+    _remoteWorkshopBookings = null;
+    _remoteWorkshopServices = null;
+    _remoteWorkshopProfile = null;
   }
 
   static DriverUser? driverById(String id) {
-    for (final driver in _drivers) {
+    for (final driver in drivers) {
       if (driver.id == id) return driver;
     }
     return null;
   }
 
   static WorkshopUser? workshopById(String id) {
-    for (final workshop in _adminWorkshops) {
+    for (final workshop in adminWorkshops) {
       if (workshop.id == id) return workshop;
     }
     return null;
   }
 
   static AdminBooking? bookingById(String id) {
-    for (final booking in _adminBookings) {
+    for (final booking in adminBookings) {
       if (booking.id == id) return booking;
     }
     return null;

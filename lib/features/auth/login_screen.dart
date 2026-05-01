@@ -32,25 +32,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     if (!_fk.currentState!.validate()) return;
 
-    if (_isAdminAttempt) {
-      setState(() => _loading = true);
-      final ok = await AppErrorHandler.guard<bool>(
-        context,
-        () async {
-          await MockData.saveRole('admin');
-          await MockData.saveToken('admin_${DateTime.now().millisecondsSinceEpoch}');
-          return true;
-        },
-        fallbackMessage: 'Could not sign you in right now.',
-      );
-      if (!mounted) return;
-      setState(() => _loading = false);
-      if (ok == true) {
-        Navigator.pushReplacementNamed(context, R.saDashboard);
-      }
-      return;
-    }
-
     setState(() => _loading = true);
     final role = await AppErrorHandler.guard<String?>(
       context,

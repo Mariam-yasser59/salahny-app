@@ -2,8 +2,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../core/errors/app_error_handler.dart';
 import '_ws_shared.dart';
 import '../../core/theme/app_theme.dart';
+import 'services/workshop_portal_service.dart';
 
 class WsActiveJobsScreen extends StatefulWidget {
   const WsActiveJobsScreen({super.key});
@@ -12,18 +14,26 @@ class WsActiveJobsScreen extends StatefulWidget {
 }
 
 class _WsActiveJobsScreenState extends State<WsActiveJobsScreen> {
-  late List<_JobEntry> _jobs;
+  final _service = WorkshopPortalService();
 
-  @override
-  void initState() {
-    super.initState();
-    _jobs = AppData.i.workshopBookings
-        .where((b) => b.status == RequestStatus.inProgress || b.status == RequestStatus.repairInProgress)
-        .map((b) => _JobEntry(b, b.progress))
-        .toList();
+  List<_JobEntry> get _jobs => AppData.i.workshopBookings
+      .where((b) => b.status == RequestStatus.accepted)
+      .map((b) => _JobEntry(b, b.progress))
+      .toList(growable: false);
+
+  Future<void> _markComplete(_JobEntry entry) async {
+    final ok = await AppErrorHandler.guard<bool>(
+      context,
+      () async {
+        await _service.updateBookingStatus(entry.b.id, 'completed');
+        await _service.getBookings();
+        return true;
+      },
+      fallbackMessage: 'Could not complete this job right now.',
+    );
+    if (!mounted || ok != true) return;
+    setState(() {});
   }
-
-  void _markComplete(int i) => setState(() => _jobs[i] = _JobEntry(_jobs[i].b, 1.0));
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -64,7 +74,7 @@ class _WsActiveJobsScreenState extends State<WsActiveJobsScreen> {
       separatorBuilder: (_, __) => const SizedBox(height: 14),
       itemBuilder: (_, i) => _JobCard(
         entry: _jobs[i],
-        onComplete: _jobs[i].progress < 1.0 ? () => _markComplete(i) : null,
+        onComplete: _jobs[i].progress < 1.0 ? () => _markComplete(_jobs[i]) : null,
       ).animate().fadeIn(duration: 350.ms, delay: (i * 70).ms),
     ),
   );

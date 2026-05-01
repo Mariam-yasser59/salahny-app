@@ -319,9 +319,17 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
                   context,
                   () async {
                     await MockData.saveBookingPaymentMethod(_selectedPaymentId);
+                    final selectedPayment = checkout.paymentOptions.firstWhere(
+                      (item) => item.id == _selectedPaymentId,
+                      orElse: () => checkout.paymentOptions.first,
+                    );
                     final booking = await _bookingService.createBooking({
                       'workshop': checkout.workshopId,
                       'service': checkout.serviceName,
+                      'serviceId': checkout.serviceId,
+                      'paymentMethod': selectedPayment.label,
+                      'total': checkout.total,
+                      'vehicleLabel': checkout.vehicleLabel,
                       'date': _resolveBookingDateTime(
                         checkout.date,
                         checkout.time,
