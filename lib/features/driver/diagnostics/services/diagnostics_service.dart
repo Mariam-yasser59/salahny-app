@@ -16,9 +16,15 @@ class DiagnosticsService {
     return reports;
   }
 
-  Future<DiagnosticReport> scan({required String vehicleId}) async {
+  Future<DiagnosticReport> scan({
+    required String vehicleId,
+    Map<String, double>? sensorReadings,
+    List<String>? faultCodes,
+  }) async {
     final response = await _client.post('/diagnostics/scan', {
       'vehicleId': vehicleId,
+      if (sensorReadings != null) 'sensorReadings': sensorReadings,
+      if (faultCodes != null) 'faultCodes': faultCodes,
     }) as Map<String, dynamic>;
     final data = response['data'] as Map<String, dynamic>? ?? response;
     final report = _mapReport(data);

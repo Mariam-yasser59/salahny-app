@@ -138,6 +138,8 @@ class MockData {
   static List<ManagedService>? _remoteManagedServices;
   static List<ManagedPackage>? _remoteManagedPackages;
   static List<ActivityLogEntry>? _remoteActivityLogs;
+  static List<NotificationModel>? _remoteNotifications;
+  static AdminSettingsData? _remoteAdminSettings;
   static DiagnosticReport? _remoteLatestDiagnosticReport;
   static List<DiagnosticReport>? _remoteDiagnosticHistory;
   static List<WsBookingData>? _remoteWorkshopBookings;
@@ -379,7 +381,7 @@ class MockData {
       List.unmodifiable(_remoteAdminBookings ?? _adminBookings);
   static List<ActivityLogEntry> get activityLogs =>
       List.unmodifiable(_remoteActivityLogs ?? _activityLogs);
-  static AdminSettingsData get adminSettings => _adminSettings;
+  static AdminSettingsData get adminSettings => _remoteAdminSettings ?? _adminSettings;
 
   static List<ServiceModel> get services {
     if (_remoteServices != null) {
@@ -693,6 +695,14 @@ class MockData {
     _remoteActivityLogs = List<ActivityLogEntry>.from(logs);
   }
 
+  static void setRemoteNotifications(List<NotificationModel> items) {
+    _remoteNotifications = List<NotificationModel>.from(items);
+  }
+
+  static void setRemoteAdminSettings(AdminSettingsData settings) {
+    _remoteAdminSettings = settings;
+  }
+
   static void setRemoteDiagnostics(List<DiagnosticReport> reports) {
     _remoteDiagnosticHistory = List<DiagnosticReport>.from(reports);
     if (reports.isNotEmpty) {
@@ -823,6 +833,8 @@ class MockData {
     _remoteManagedServices = null;
     _remoteManagedPackages = null;
     _remoteActivityLogs = null;
+    _remoteNotifications = null;
+    _remoteAdminSettings = null;
     _remoteLatestDiagnosticReport = null;
     _remoteDiagnosticHistory = null;
     _remoteWorkshopBookings = null;
@@ -1213,6 +1225,9 @@ class MockData {
   }
 
   static List<NotificationModel> get notifications {
+    if (_remoteNotifications != null) {
+      return List.unmodifiable(_remoteNotifications!);
+    }
     final booking = bookings.isEmpty ? BookingModel.mockList.first : bookings.first;
     final vehicle = _vehicles.isEmpty ? null : _vehicles.first;
     return [

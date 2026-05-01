@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '_ws_shared.dart';
 import 'ws_ai_report_screen.dart';
+import '../../core/errors/app_error_handler.dart';
 import '../../core/theme/app_theme.dart';
+import '../../features/driver/diagnostics/services/diagnostics_service.dart';
 import '../../shared/widgets/app_widgets.dart';
 
 class WsDiagnosticsScreen extends StatefulWidget {
@@ -20,6 +22,7 @@ class _WsDiagnosticsScreenState extends State<WsDiagnosticsScreen>
   int _source = -1; // 0=live, 1=upload, 2=manual
   bool _scanning = false;
   late AnimationController _scanAnim;
+  final _diagnosticsService = DiagnosticsService();
 
   // Manual entry controllers
   late final TextEditingController _rpmCtrl;
@@ -59,16 +62,56 @@ class _WsDiagnosticsScreenState extends State<WsDiagnosticsScreen>
     super.dispose();
   }
 
-  void _runAnalysis() {
+  Future<void> _runAnalysis() async {
     setState(() => _scanning = true);
     _scanAnim.repeat();
-    Future.delayed(3200.ms, () {
-      if (!mounted) return;
-      _scanAnim.stop(); _scanAnim.reset();
-      setState(() => _scanning = false);
-      Navigator.push(context, MaterialPageRoute(
-          builder: (_) => WsAiReportScreen(linkedRequestId: widget.linkedRequestId)));
-    });
+    final report = await AppErrorHandler.guard(
+      context,
+      () => _diagnosticsService.scan(
+        vehicleId: widget.linkedRequestId ??
+            (AppData.i.vehicles.isEmpty
+                ? 'workshop_diagnostic_vehicle'
+                : AppData.i.vehicles.first.id),
+        sensorReadings: _buildSensorReadings(),
+        faultCodes: _codesCtrl.text
+            .split(',')
+            .map((code) => code.trim())
+            .where((code) => code.isNotEmpty)
+            .toList(growable: false),
+      ),
+      fallbackMessage: 'AI diagnostics could not run right now.',
+    );
+    if (!mounted) return;
+    _scanAnim.stop();
+    _scanAnim.reset();
+    setState(() => _scanning = false);
+    if (report == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            WsAiReportScreen(linkedRequestId: widget.linkedRequestId),
+      ),
+    );
+  }
+
+  Map<String, double> _buildSensorReadings() {
+    if (_source == 0) {
+      return const {
+        'ENGINE_RPM': 2100,
+        'COOLANT_TEMPERATURE': 96,
+        'INTAKE_MANIFOLD_PRESSURE': 69,
+        'CONTROL_MODULE_VOLTAGE': 12.4,
+        'VEHICLE_SPEED': 32,
+      };
+    }
+    return {
+      'ENGINE_RPM': double.tryParse(_rpmCtrl.text.trim()) ?? 0,
+      'COOLANT_TEMPERATURE': double.tryParse(_tempCtrl.text.trim()) ?? 0,
+      'INTAKE_MANIFOLD_PRESSURE': double.tryParse(_mapCtrl.text.trim()) ?? 0,
+      'MAF': double.tryParse(_mafCtrl.text.trim()) ?? 0,
+      'O2_VOLTAGE': double.tryParse(_o2Ctrl.text.trim()) ?? 0,
+    };
   }
 
   @override

@@ -1,6 +1,7 @@
 import Diagnostic from '../models/Diagnostic.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import { logActivity } from '../utils/activityLogger.js';
+import { predictWithMlModel } from '../services/mlBridgeService.js';
 
 const reports = [
   {
@@ -110,11 +111,55 @@ const toPayload = (doc) => ({
 });
 
 export const runDiagnosticScan = asyncHandler(async (req, res) => {
-  const { vehicleId = 'default_vehicle' } = req.body;
-  const seed = vehicleId
-    .split('')
-    .reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  const template = reports[seed % reports.length];
+  const {
+    vehicleId = 'default_vehicle',
+    sensorReadings = {},
+    faultCodes = [],
+  } = req.body;
+
+  let template;
+  try {
+    const prediction = await predictWithMlModel(sensorReadings);
+    const health =
+      prediction.risk_level === 'healthy'
+        ? 96
+        : prediction.risk_level === 'warning'
+          ? Math.max(55, 100 - Math.round(prediction.confidence * 35))
+          : Math.max(25, 100 - Math.round(prediction.confidence * 70));
+    template = {
+      summary: prediction.predicted_failure,
+      riskLevel: prediction.risk_level,
+      health,
+      faultCodes: faultCodes.map((code) => ({
+        code,
+        description: `Reported code ${code}`,
+        level: prediction.risk_level,
+      })),
+      vitals: Object.entries(sensorReadings).map(([key, value]) => ({
+        key,
+        value: Number(value) || 0,
+        unit: _unitForVital(key),
+      })),
+      recommendations: prediction.recommendations,
+      aiPrediction: {
+        issue: prediction.predicted_failure,
+        confidence: prediction.confidence,
+        urgency: prediction.risk_level,
+        recommendation: prediction.recommendations.join(' '),
+        technicalNote: `Model probabilities: ${Object.entries(
+          prediction.all_probabilities || {},
+        )
+          .map(([key, value]) => `${key} ${(Number(value) * 100).toFixed(0)}%`)
+          .join(', ')}`,
+        estimatedRepair: prediction.predicted_failure,
+      },
+    };
+  } catch (_) {
+    const seed = vehicleId
+      .split('')
+      .reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    template = reports[seed % reports.length];
+  }
 
   const diagnostic = await Diagnostic.create({
     user: req.user._id,
@@ -146,3 +191,13 @@ export const getDiagnosticHistory = asyncHandler(async (req, res) => {
     data: diagnostics.map(toPayload),
   });
 });
+
+const _unitForVital = (key) => {
+  const lower = key.toLowerCase();
+  if (lower.includes('temp')) return '°C';
+  if (lower.includes('rpm')) return 'rpm';
+  if (lower.includes('voltage') || lower.includes('battery')) return 'V';
+  if (lower.includes('pressure') || lower.includes('map')) return 'kPa';
+  if (lower.includes('speed')) return 'km/h';
+  return '';
+};

@@ -2,6 +2,7 @@ import PackagePurchase from '../models/PackagePurchase.js';
 import ServicePackage from '../models/Package.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import { logActivity } from '../utils/activityLogger.js';
+import { createNotification } from './notificationController.js';
 
 const mapPurchase = (purchase) => ({
   id: purchase._id.toString(),
@@ -38,6 +39,12 @@ export const createPackagePurchase = asyncHandler(async (req, res) => {
     action: 'Package purchased',
     target: pkg.name,
     details: `${pkg.name} purchased using ${paymentMethod}.`,
+  });
+  await createNotification({
+    userId: req.user._id,
+    title: 'Package activated',
+    body: `${pkg.name} is now active on your account.`,
+    type: 'promo',
   });
 
   res.status(201).json({

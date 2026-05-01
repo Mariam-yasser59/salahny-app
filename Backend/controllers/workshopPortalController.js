@@ -2,6 +2,7 @@ import Booking from '../models/Booking.js';
 import Workshop from '../models/Workshop.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import { logActivity } from '../utils/activityLogger.js';
+import { createNotification } from './notificationController.js';
 
 const toPortalStatus = (status) => {
   switch (status) {
@@ -127,6 +128,12 @@ export const updateWorkshopPortalBookingStatus = asyncHandler(async (req, res) =
     action: 'Workshop booking updated',
     target: booking._id.toString(),
     details: `Booking for ${booking.user?.name ?? 'driver'} moved to ${booking.status}.`,
+  });
+  await createNotification({
+    userId: booking.user,
+    title: 'Workshop updated your booking',
+    body: `${workshop.name} marked your ${booking.service} booking as ${booking.status}.`,
+    type: 'booking',
   });
 
   res.status(200).json({

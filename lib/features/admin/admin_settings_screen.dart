@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/errors/app_error_handler.dart';
 import '../../core/theme/app_theme.dart';
+import '../content/services/content_service.dart';
 import '../../shared/models/admin_models.dart';
 import '../../shared/services/mock_data.dart';
 import '../../shared/widgets/app_widgets.dart';
@@ -31,6 +32,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
   late final TextEditingController _announcementTitleCtrl;
   late final TextEditingController _announcementBodyCtrl;
   final _passwordCtrl = TextEditingController();
+  final _contentService = ContentService();
   bool _notificationsEnabled = MockData.adminSettings.notificationsEnabled;
 
   @override
@@ -42,6 +44,22 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
     _announcementTitleCtrl =
         TextEditingController(text: settings.announcementTitle);
     _announcementBodyCtrl = TextEditingController(text: settings.announcementBody);
+    _load();
+  }
+
+  Future<void> _load() async {
+    await AppErrorHandler.guard<void>(
+      context,
+      () => _contentService.getAdminSettings(),
+      fallbackMessage: 'Could not load admin settings right now.',
+    );
+    if (!mounted) return;
+    final settings = MockData.adminSettings;
+    _privacyCtrl.text = settings.privacyPolicy;
+    _aboutCtrl.text = settings.aboutContent;
+    _announcementTitleCtrl.text = settings.announcementTitle;
+    _announcementBodyCtrl.text = settings.announcementBody;
+    setState(() => _notificationsEnabled = settings.notificationsEnabled);
   }
 
   @override
@@ -154,16 +172,23 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
                   const SizedBox(height: 10),
                   AppBtn(
                     label: 'Save Settings',
-                    onTap: () {
-                      MockData.updateAdminSettings(
-                        AdminSettingsData(
-                          privacyPolicy: _privacyCtrl.text.trim(),
-                          aboutContent: _aboutCtrl.text.trim(),
-                          announcementTitle: _announcementTitleCtrl.text.trim(),
-                          announcementBody: _announcementBodyCtrl.text.trim(),
-                          notificationsEnabled: _notificationsEnabled,
-                        ),
+                    onTap: () async {
+                      final data = AdminSettingsData(
+                        privacyPolicy: _privacyCtrl.text.trim(),
+                        aboutContent: _aboutCtrl.text.trim(),
+                        announcementTitle: _announcementTitleCtrl.text.trim(),
+                        announcementBody: _announcementBodyCtrl.text.trim(),
+                        notificationsEnabled: _notificationsEnabled,
                       );
+                      final ok = await AppErrorHandler.guard<bool>(
+                        context,
+                        () async {
+                          await _contentService.updateAdminSettings(data);
+                          return true;
+                        },
+                        fallbackMessage: 'Could not save admin settings right now.',
+                      );
+                      if (!mounted || ok != true) return;
                       AppErrorHandler.showMessage(
                         context,
                         'Admin settings updated',
@@ -198,9 +223,18 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
                         );
                         return;
                       }
-                      await MockData.changeAdminPassword(_passwordCtrl.text.trim());
+                      final ok = await AppErrorHandler.guard<bool>(
+                        context,
+                        () async {
+                          await _contentService.updateAdminPassword(
+                            _passwordCtrl.text.trim(),
+                          );
+                          return true;
+                        },
+                        fallbackMessage: 'Could not update the admin password.',
+                      );
+                      if (!mounted || ok != true) return;
                       _passwordCtrl.clear();
-                      if (!mounted) return;
                       AppErrorHandler.showMessage(
                         context,
                         'Admin password updated',

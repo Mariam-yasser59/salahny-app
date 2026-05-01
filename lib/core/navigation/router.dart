@@ -140,7 +140,7 @@ Route<dynamic> onGenerateRoute(RouteSettings s) {
       page = const AiChatScreen();
       break;
     case R.mechanicChat:
-      page = const MechanicChatScreen();
+      page = MechanicChatScreen(bookingId: s.arguments as String?);
       break;
     case R.notifications:
       page = const NotificationsScreen();

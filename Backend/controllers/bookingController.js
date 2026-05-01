@@ -1,6 +1,7 @@
 import Booking from '../models/Booking.js';
 import Workshop from '../models/Workshop.js';
 import asyncHandler from '../utils/asyncHandler.js';
+import { createNotification } from './notificationController.js';
 
 export const createBooking = asyncHandler(async (req, res) => {
   const {
@@ -45,6 +46,12 @@ export const createBooking = asyncHandler(async (req, res) => {
     { path: 'user', select: 'name email role' },
     { path: 'workshop', select: 'name location services prices owner' },
   ]);
+  await createNotification({
+    userId: populatedBooking.user._id,
+    title: 'Booking created',
+    body: `${service} was booked with ${populatedBooking.workshop.name}.`,
+    type: 'booking',
+  });
 
   res.status(201).json({
     success: true,
@@ -151,6 +158,12 @@ export const updateBookingStatus = asyncHandler(async (req, res) => {
     { path: 'user', select: 'name email role' },
     { path: 'workshop', select: 'name location owner' },
   ]);
+  await createNotification({
+    userId: populatedBooking.user._id,
+    title: 'Booking status updated',
+    body: `${populatedBooking.service} is now ${booking.status}.`,
+    type: 'booking',
+  });
 
   res.status(200).json({
     success: true,

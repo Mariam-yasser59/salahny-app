@@ -51,6 +51,54 @@ The same API is also mounted under `/api`, which is what the Flutter app uses:
 - `GET /api/notifications`
 - `POST /api/reviews`
 - `GET /api/admin/dashboard`
+- `POST /api/chat/ai`
+- `GET /api/chat/bookings/:bookingId/messages`
+- `POST /api/chat/bookings/:bookingId/messages`
+- `POST /api/chat/bookings/:bookingId/share-diagnostic`
+- `GET /api/content/public-content`
+- `GET /api/content/admin/settings`
+- `PUT /api/content/admin/settings`
+- `PUT /api/content/admin/settings/password`
+- `GET /api/diagnostics`
+- `POST /api/diagnostics/scan`
+
+## AI / ML Diagnostics Integration
+
+The Node backend now bridges to the model assets in `AI and ML`.
+
+1. Train the model artifacts into `AI and ML`:
+
+```bash
+cd Backend
+python ml_service/train_model.py
+```
+
+This creates:
+
+- `AI and ML/obd2_rf_model.pkl`
+- `AI and ML/obd2_label_encoder.pkl`
+
+2. Run the Python ML microservice:
+
+```bash
+cd Backend/ml_service
+python app.py
+```
+
+It starts on `http://localhost:5001`.
+
+3. Run the Node backend:
+
+```bash
+cd Backend
+npm run dev
+```
+
+The diagnostics controller calls the ML service through `ML_SERVICE_URL` and falls back to seeded diagnostic templates if the service is unavailable. Default:
+
+```env
+ML_SERVICE_URL=http://127.0.0.1:5001
+```
 
 ## Postman Quick Test
 

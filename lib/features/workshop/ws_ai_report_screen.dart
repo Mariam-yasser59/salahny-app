@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '_ws_shared.dart';
+import '../../core/errors/app_error_handler.dart';
 import '../../core/theme/app_theme.dart';
+import '../../features/chat/services/chat_service.dart';
 import '../../shared/models/models.dart';
 import '../../shared/services/mock_data.dart';
 
@@ -98,10 +100,7 @@ class WsAiReportScreen extends StatelessWidget {
               ),
             ),
           ),
-          _ActionFooter(
-            ai: ai,
-            onComplete: () => Navigator.pop(context),
-          ),
+          _ActionFooter(ai: ai, linkedRequestId: linkedRequestId),
         ],
       ),
     );
@@ -472,8 +471,37 @@ class _LinkedBanner extends StatelessWidget {
 
 class _ActionFooter extends StatelessWidget {
   final AIPrediction ai;
-  final VoidCallback onComplete;
-  const _ActionFooter({required this.ai, required this.onComplete});
+  final String? linkedRequestId;
+
+  const _ActionFooter({required this.ai, required this.linkedRequestId});
+
+  Future<void> _share(BuildContext context) async {
+    if (linkedRequestId == null || linkedRequestId!.isEmpty) {
+      AppErrorHandler.showMessage(
+        context,
+        'No linked booking is available for this diagnostic report.',
+      );
+      return;
+    }
+    final ok = await AppErrorHandler.guard<bool>(
+      context,
+      () async {
+        await ChatService().shareDiagnostic(
+          bookingId: linkedRequestId!,
+          summary: ai.issue,
+          recommendation: ai.recommendedFix,
+        );
+        return true;
+      },
+      fallbackMessage: 'Could not share the diagnostic report right now.',
+    );
+    if (ok != true) return;
+    AppErrorHandler.showMessage(
+      context,
+      'Diagnostic report shared with the driver',
+      isError: false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) => Container(
@@ -489,7 +517,7 @@ class _ActionFooter extends StatelessWidget {
           WsBtn(
             label: 'Create Repair Task',
             icon: Icons.build_rounded,
-            onTap: onComplete,
+            onTap: () => _share(context),
           ),
           const SizedBox(height: 10),
           Row(
@@ -499,7 +527,7 @@ class _ActionFooter extends StatelessWidget {
                   label: 'Send to Driver',
                   icon: Icons.send_rounded,
                   outline: true,
-                  onTap: () {},
+                  onTap: () => _share(context),
                 ),
               ),
               const SizedBox(width: 12),
@@ -508,7 +536,7 @@ class _ActionFooter extends StatelessWidget {
                   label: 'Done',
                   icon: Icons.check_rounded,
                   gold: true,
-                  onTap: onComplete,
+                  onTap: () => Navigator.pop(context),
                 ),
               ),
             ],
