@@ -85,6 +85,7 @@ const verificationDocumentSchema = new mongoose.Schema(
         'needs_admin_review',
         'admin_approved',
         'admin_rejected',
+        'reupload_requested',
         // Backward-compatible legacy values kept for existing records.
         'pending',
         'approved',

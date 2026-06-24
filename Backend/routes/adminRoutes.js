@@ -51,6 +51,10 @@ router.patch('/verifications/:id/reject', (req, _res, next) => {
   req.body.status = 'rejected';
   next();
 }, reviewAdminDocument);
+router.patch('/verifications/:id/request-reupload', (req, _res, next) => {
+  req.body.status = 'request_reupload';
+  next();
+}, reviewAdminDocument);
 router.patch('/verifications/:id/override-ai', overrideAdminVerificationAi);
 router.post('/verifications/:id/reverify', reverifyDocument);
 router.get('/chats/bookings', getAdminBookingChats);
