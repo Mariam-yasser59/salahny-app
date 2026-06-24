@@ -25,3 +25,4 @@ Backend/node_modules/
 build/
 .dart_tool/
 
+.github/workflows/
