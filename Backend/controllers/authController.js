@@ -352,7 +352,7 @@ export const requestPasswordReset = asyncHandler(async (req, res) => {
   }
 
   const user = await User.findOne({ email }).select(
-    '+passwordResetTokenHash +passwordResetExpiresAt',
+    '+passwordResetTokenHash +passwordResetExpiresAt +passwordResetFailedAttempts +passwordResetLockedUntil',
   );
 
   let resetToken;
@@ -361,6 +361,8 @@ export const requestPasswordReset = asyncHandler(async (req, res) => {
     resetToken = crypto.randomBytes(32).toString('hex');
     user.passwordResetTokenHash = hashToken(resetToken);
     user.passwordResetExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    user.passwordResetFailedAttempts = 0;
+    user.passwordResetLockedUntil = null;
     await user.save();
 
     const { text, html } = buildPasswordResetEmail({ user, resetToken });
@@ -401,12 +403,13 @@ export const requestPasswordReset = asyncHandler(async (req, res) => {
 });
 
 export const resetPassword = asyncHandler(async (req, res) => {
+  const email = req.body.email?.toString().trim().toLowerCase();
   const { token, password } = req.body;
 
-  if (!token || !password) {
+  if (!email || !token || !password) {
     return res.status(400).json({
       success: false,
-      message: 'token and password are required',
+      message: 'email, token, and password are required',
     });
   }
 
@@ -417,12 +420,38 @@ export const resetPassword = asyncHandler(async (req, res) => {
     });
   }
 
-  const user = await User.findOne({
-    passwordResetTokenHash: hashToken(token),
-    passwordResetExpiresAt: { $gt: new Date() },
-  }).select('+password +passwordResetTokenHash +passwordResetExpiresAt');
+  const user = await User.findOne({ email }).select(
+    '+password +passwordResetTokenHash +passwordResetExpiresAt +passwordResetFailedAttempts +passwordResetLockedUntil',
+  );
 
   if (!user) {
+    return res.status(400).json({
+      success: false,
+      message: 'Reset token is invalid or expired',
+    });
+  }
+
+  if (user.passwordResetLockedUntil && user.passwordResetLockedUntil > new Date()) {
+    return res.status(429).json({
+      success: false,
+      message: 'Too many invalid reset attempts. Please request a new token later.',
+    });
+  }
+
+  const tokenValid =
+    user.passwordResetTokenHash &&
+    user.passwordResetExpiresAt &&
+    user.passwordResetExpiresAt > new Date() &&
+    user.passwordResetTokenHash === hashToken(token);
+
+  if (!tokenValid) {
+    user.passwordResetFailedAttempts = (user.passwordResetFailedAttempts || 0) + 1;
+    if (user.passwordResetFailedAttempts >= 5) {
+      user.passwordResetLockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+      user.passwordResetTokenHash = null;
+      user.passwordResetExpiresAt = null;
+    }
+    await user.save();
     return res.status(400).json({
       success: false,
       message: 'Reset token is invalid or expired',
@@ -432,12 +461,21 @@ export const resetPassword = asyncHandler(async (req, res) => {
   user.password = password;
   user.passwordResetTokenHash = null;
   user.passwordResetExpiresAt = null;
+  user.passwordResetFailedAttempts = 0;
+  user.passwordResetLockedUntil = null;
   await user.save();
 
   await RefreshToken.updateMany(
     { user: user._id, revokedAt: null },
     { revokedAt: new Date() },
   );
+
+  await sendEmail({
+    to: user.email,
+    subject: 'Your Salahny password was reset',
+    text: `Hello ${user.name},\n\nYour Salahny password was reset successfully. If this was not you, please contact support immediately.\n\nSalahny Team`,
+    html: `<p>Hello ${user.name},</p><p>Your Salahny password was reset successfully.</p><p>If this was not you, please contact support immediately.</p><p>Salahny Team</p>`,
+  });
 
   res.status(200).json({
     success: true,

@@ -12,7 +12,9 @@
     "dev": "nodemon server.js",
     "mongo:check": "node scripts/checkMongoConnection.js",
     "test:roles": "node scripts/roleIntegrationCheck.js",
-    "test:providers": "node scripts/providerReadinessCheck.js"
+    "test:providers": "node scripts/providerReadinessCheck.js",
+    "test:verification": "node scripts/documentVerificationRulesCheck.js",
+    "test:password-reset": "node scripts/passwordResetSecurityCheck.js"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

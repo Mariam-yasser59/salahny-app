@@ -8,12 +8,19 @@ import { storeDocumentFile } from '../services/documentStorageService.js';
 import { verifyDocumentWithCv } from '../services/cvVerificationService.js';
 
 const allowedMimeTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+const allowedExtensions = ['.jpg', '.jpeg', '.png', '.pdf'];
+const documentKindByRole = {
+  driver: ['driver_license'],
+  workshop: ['commercial_registration'],
+};
 
 export const documentUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, cb) => {
-    if (!allowedMimeTypes.includes(file.mimetype)) {
+    const lowerName = file.originalname.toLowerCase();
+    const hasAllowedExtension = allowedExtensions.some((ext) => lowerName.endsWith(ext));
+    if (!allowedMimeTypes.includes(file.mimetype) || !hasAllowedExtension) {
       const error = new Error('Only JPEG, PNG, and PDF files are allowed');
       error.statusCode = 400;
       return cb(error);
@@ -31,7 +38,17 @@ const mapDocument = (document) => ({
   originalName: document.originalName,
   mimeType: document.mimeType,
   sizeBytes: document.sizeBytes,
+  role: document.role,
   status: document.status,
+  verificationStatus: document.verificationStatus,
+  documentType: document.documentType,
+  detectedDocumentType: document.detectedDocumentType,
+  fileUrl: document.fileUrl,
+  ocrConfidence: document.ocrConfidence,
+  confidenceScore: document.confidenceScore,
+  qualityStatus: document.qualityStatus,
+  rejectionReason: document.rejectionReason,
+  extractedFields: document.extractedFields,
   aiVerificationStatus: document.aiVerificationStatus,
   aiConfidence: document.aiConfidence,
   aiExtractedFields: document.aiExtractedFields,
@@ -72,9 +89,24 @@ const fileForDocument = async (document) => {
 };
 
 const applyAiResult = async ({ document, owner, workshop, aiResult }) => {
+  document.userId = document.userId ?? owner?._id ?? document.owner;
+  document.role = document.role ?? owner?.role;
   document.status = aiResult.status;
+  document.verificationStatus = aiResult.status === 'ai_verified'
+    ? 'needs_manual_review'
+    : aiResult.status === 'ai_rejected'
+      ? 'rejected'
+      : 'needs_manual_review';
   document.aiVerificationStatus = aiResult.status;
   document.aiConfidence = aiResult.confidence;
+  document.ocrConfidence = aiResult.ocrConfidence;
+  document.detectedDocumentType = aiResult.detectedDocumentType ?? 'UNKNOWN';
+  document.documentType = aiResult.detectedDocumentType ?? 'UNKNOWN';
+  document.extractedText = aiResult.extractedText ?? '';
+  document.confidenceScore = aiResult.confidence;
+  document.qualityStatus = aiResult.qualityStatus ?? 'low_confidence';
+  document.rejectionReason = aiResult.rejectionReason ?? '';
+  document.extractedFields = aiResult.extractedFields;
   document.aiExtractedFields = aiResult.extractedFields;
   document.aiIssues = aiResult.issues;
   document.aiCheckedAt = new Date();
@@ -108,24 +140,28 @@ export const uploadDocument = asyncHandler(async (req, res) => {
     });
   }
 
-  if (req.user.role === 'driver' && kind !== 'driver_license') {
+  if (!req.file.buffer?.length) {
     return res.status(400).json({
       success: false,
-      message: 'Drivers can upload only driver licenses',
+      message: 'Uploaded document is empty or could not be read',
     });
   }
 
-  if (
-    req.user.role === 'workshop' &&
-    !['business_license', 'commercial_registration', 'permit'].includes(kind)
-  ) {
+  const verificationRole =
+    req.user.role === 'admin' && workshopId ? 'workshop' : req.user.role;
+  const allowedKinds = documentKindByRole[verificationRole] ?? [];
+  if (allowedKinds.length > 0 && !allowedKinds.includes(kind)) {
     return res.status(400).json({
       success: false,
-      message: 'Invalid workshop verification document type',
+      message:
+        verificationRole === 'workshop'
+          ? 'Workshop verification requires a Commercial Register document'
+          : 'Drivers can upload only Driving License documents',
     });
   }
 
   let workshop = null;
+  let ownerForDocument = req.user;
   if (req.user.role === 'workshop') {
     workshop = await Workshop.findOne({ owner: req.user._id });
     if (!workshop) {
@@ -136,11 +172,17 @@ export const uploadDocument = asyncHandler(async (req, res) => {
     }
   } else if (req.user.role === 'admin' && workshopId) {
     workshop = await Workshop.findById(workshopId);
+    if (workshop) {
+      const workshopOwner = await User.findById(workshop.owner);
+      if (workshopOwner) ownerForDocument = workshopOwner;
+    }
   }
 
   const storedFile = await storeDocumentFile(req.file);
   const document = await VerificationDocument.create({
-    owner: req.user._id,
+    owner: ownerForDocument._id,
+    userId: ownerForDocument._id,
+    role: verificationRole,
     workshop: workshop?._id ?? null,
     kind,
     originalName: req.file.originalname,
@@ -149,14 +191,16 @@ export const uploadDocument = asyncHandler(async (req, res) => {
     data: storedFile.data,
     storageProvider: storedFile.storageProvider,
     externalUrl: storedFile.externalUrl,
+    fileUrl: storedFile.externalUrl ?? null,
     storageKey: storedFile.storageKey,
     status: 'ai_processing',
+    verificationStatus: 'ai_processing',
     aiVerificationStatus: 'ai_processing',
   });
 
-  req.user.verificationStatus = 'ai_processing';
-  req.user.aiVerificationStatus = 'ai_processing';
-  await req.user.save();
+  ownerForDocument.verificationStatus = 'ai_processing';
+  ownerForDocument.aiVerificationStatus = 'ai_processing';
+  await ownerForDocument.save();
   if (workshop) {
     workshop.accountStatus = 'pending';
     workshop.isVerified = false;
@@ -167,10 +211,10 @@ export const uploadDocument = asyncHandler(async (req, res) => {
 
   const aiResult = await verifyDocumentWithCv({
     file: req.file,
-    role: req.user.role === 'workshop' ? 'workshop' : 'driver',
-    documentType: kind === 'permit' ? 'workshop_permit' : kind,
+    role: verificationRole === 'workshop' ? 'workshop' : 'driver',
+    documentType: kind === 'permit' ? 'commercial_registration' : kind,
   });
-  await applyAiResult({ document, owner: req.user, workshop, aiResult });
+  await applyAiResult({ document, owner: ownerForDocument, workshop, aiResult });
 
   res.status(201).json({ success: true, data: mapDocument(document) });
 });
@@ -196,7 +240,7 @@ export const reverifyDocument = asyncHandler(async (req, res) => {
   const aiResult = await verifyDocumentWithCv({
     file,
     role: owner.role === 'workshop' ? 'workshop' : 'driver',
-    documentType: document.kind === 'permit' ? 'workshop_permit' : document.kind,
+    documentType: document.kind === 'permit' ? 'commercial_registration' : document.kind,
   });
 
   await applyAiResult({ document, owner, workshop, aiResult });

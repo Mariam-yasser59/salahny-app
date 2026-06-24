@@ -60,6 +60,23 @@ const mapBookingStatus = (value) => {
   }
 };
 
+const expectedDocumentTypeForRole = (role) => {
+  if (role === 'driver') return 'DRIVING_LICENSE';
+  if (role === 'workshop') return 'COMMERCIAL_REGISTER';
+  return null;
+};
+
+const documentTypeForReview = (document) =>
+  document.documentType ||
+  document.detectedDocumentType ||
+  (document.kind === 'driver_license'
+    ? 'DRIVING_LICENSE'
+    : document.kind === 'commercial_registration'
+      ? 'COMMERCIAL_REGISTER'
+      : document.kind === 'tax_card'
+        ? 'TAX_CARD'
+        : 'UNKNOWN');
+
 const mapDriver = async (user) => {
   const totalBookings = await Booking.countDocuments({ user: user._id });
   return {
@@ -394,7 +411,11 @@ export const updateAdminUserStatus = asyncHandler(async (req, res) => {
   if (status === 'active' && user.role === 'driver') {
     const approvedLicense = await VerificationDocument.exists({
       owner: user._id,
-      kind: 'driver_license',
+      $or: [
+        { documentType: 'DRIVING_LICENSE' },
+        { detectedDocumentType: 'DRIVING_LICENSE' },
+        { kind: 'driver_license' },
+      ],
       status: 'approved',
     });
     if (!approvedLicense) {
@@ -535,6 +556,7 @@ export const getAdminLogs = asyncHandler(async (_req, res) => {
 
 export const getAdminDocuments = asyncHandler(async (_req, res) => {
   const documents = await VerificationDocument.find()
+    .select('+extractedText')
     .populate('owner', 'name email role')
     .populate('workshop', 'name')
     .populate('reviewedBy', 'name email')
@@ -555,10 +577,10 @@ export const getAdminVerificationById = asyncHandler(async (req, res) => {
 
 export const reviewAdminDocument = asyncHandler(async (req, res) => {
   const { status, reviewNotes = '' } = req.body;
-  if (!['approved', 'rejected'].includes(status)) {
+  if (!['approved', 'rejected', 'request_reupload'].includes(status)) {
     return res.status(400).json({
       success: false,
-      message: 'status must be approved or rejected',
+      message: 'status must be approved, rejected, or request_reupload',
     });
   }
 
@@ -567,43 +589,81 @@ export const reviewAdminDocument = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Document not found' });
   }
 
-  document.status = status;
+  const approved = status === 'approved';
+  const rejected = status === 'rejected';
+  const owner = await User.findById(document.owner);
+  if (!owner) {
+    return res.status(404).json({ success: false, message: 'Document owner not found' });
+  }
+  document.userId = document.userId ?? owner._id;
+  document.role = document.role ?? owner.role;
+  if (approved) {
+    const expectedType = expectedDocumentTypeForRole(owner.role);
+    const actualType = documentTypeForReview(document);
+    if (!expectedType || actualType !== expectedType) {
+      return res.status(409).json({
+        success: false,
+        message:
+          owner.role === 'workshop'
+            ? 'Workshop accounts can be approved only with a Commercial Register document'
+            : 'Driver accounts can be approved only with a Driving License document',
+      });
+    }
+  }
+  document.status = status === 'request_reupload' ? 'reupload_requested' : status;
+  document.verificationStatus =
+    status === 'request_reupload' ? 'needs_manual_review' : status;
   document.reviewedBy = req.user._id;
   document.reviewNotes = reviewNotes;
   document.reviewedAt = new Date();
   await document.save();
 
   await User.findByIdAndUpdate(document.owner, {
-    verificationStatus: status === 'approved' ? 'admin_approved' : 'admin_rejected',
-    accountStatus: status === 'approved' ? 'active' : 'rejected',
+    verificationStatus: approved
+      ? 'admin_approved'
+      : status === 'request_reupload'
+        ? 'reupload_requested'
+        : 'admin_rejected',
+    accountStatus: approved ? 'active' : rejected ? 'rejected' : 'pending',
     reviewedBy: req.user._id,
     reviewedAt: document.reviewedAt,
-    rejectionReason: status === 'rejected' ? reviewNotes : '',
+    rejectionReason: approved ? '' : reviewNotes,
   });
   if (document.workshop) {
     await Workshop.findByIdAndUpdate(document.workshop, {
-      isVerified: status === 'approved',
-      accountStatus: status === 'approved' ? 'active' : 'rejected',
-      verificationStatus: status === 'approved' ? 'admin_approved' : 'admin_rejected',
+      isVerified: approved,
+      accountStatus: approved ? 'active' : rejected ? 'rejected' : 'pending',
+      verificationStatus: approved
+        ? 'admin_approved'
+        : status === 'request_reupload'
+          ? 'reupload_requested'
+          : 'admin_rejected',
     });
   }
-  const owner = await User.findById(document.owner);
   if (owner) {
     await createNotification({
       userId: owner._id,
-      title: status === 'approved' ? 'Account approved' : 'Verification rejected',
+      title: approved
+        ? 'Account approved'
+        : status === 'request_reupload'
+          ? 'Verification document needs re-upload'
+          : 'Verification rejected',
       body:
-        status === 'approved'
+        approved
           ? 'Your Salahny account has been approved. You can now log in.'
-          : `Your account verification was rejected.${reviewNotes ? ` Notes: ${reviewNotes}` : ''}`,
+          : status === 'request_reupload'
+            ? `Please upload a clearer verification document.${reviewNotes ? ` Notes: ${reviewNotes}` : ''}`
+            : `Your account verification was rejected.${reviewNotes ? ` Notes: ${reviewNotes}` : ''}`,
       type: 'system',
       data: { verificationDocumentId: document._id.toString(), status },
     });
-    await sendAccountStatusEmail({
-      user: owner,
-      status: status === 'approved' ? 'active' : 'rejected',
-      notes: reviewNotes,
-    });
+    if (status !== 'request_reupload') {
+      await sendAccountStatusEmail({
+        user: owner,
+        status: approved ? 'active' : 'rejected',
+        notes: reviewNotes,
+      });
+    }
   }
 
   res.status(200).json({ success: true, data: document });

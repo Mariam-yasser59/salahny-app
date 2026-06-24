@@ -98,6 +98,38 @@ const syncServiceIndexes = (workshop) => {
   );
 };
 
+const serializeSlot = (slot) => new Date(slot).toISOString();
+
+const parseFutureSlots = (rawSlots) => {
+  const rejected = [];
+  const accepted = [];
+  for (const rawSlot of rawSlots) {
+    if (typeof rawSlot !== 'string') {
+      rejected.push({ slot: rawSlot, reason: 'slot must be an ISO string' });
+      continue;
+    }
+    const hasTimezone = /(?:z|[+-]\d{2}:\d{2})$/i.test(rawSlot);
+    if (!hasTimezone) {
+      rejected.push({ slot: rawSlot, reason: 'slot must include UTC timezone offset' });
+      continue;
+    }
+    const slot = new Date(rawSlot);
+    if (Number.isNaN(slot.getTime())) {
+      rejected.push({ slot: rawSlot, reason: 'invalid date' });
+      continue;
+    }
+    if (slot.getTime() <= Date.now()) {
+      rejected.push({ slot: rawSlot, reason: 'slot must be in the future' });
+      continue;
+    }
+    accepted.push(slot);
+  }
+  const uniqueSlots = [
+    ...new Map(accepted.map((slot) => [slot.toISOString(), slot])).values(),
+  ].sort((a, b) => a - b);
+  return { slots: uniqueSlots, rejected };
+};
+
 export const getWorkshopPortalDashboard = asyncHandler(async (req, res) => {
   const workshop = await Workshop.findOne({ owner: req.user._id });
 
@@ -414,7 +446,8 @@ export const getWorkshopPortalSlots = asyncHandler(async (req, res) => {
     success: true,
     data: workshop.availableSlots
       .filter((slot) => slot.getTime() > Date.now())
-      .sort((a, b) => a - b),
+      .sort((a, b) => a - b)
+      .map(serializeSlot),
   });
 });
 
@@ -432,13 +465,27 @@ export const updateWorkshopPortalSlots = asyncHandler(async (req, res) => {
       message: 'slots must be an array of ISO date strings',
     });
   }
-  const slots = req.body.slots
-    .map((slot) => new Date(slot))
-    .filter((slot) => !Number.isNaN(slot.getTime()) && slot.getTime() > Date.now());
-  workshop.availableSlots = [...new Map(slots.map((slot) => [slot.toISOString(), slot])).values()]
-    .sort((a, b) => a - b);
+  const { slots, rejected } = parseFutureSlots(req.body.slots);
+  console.info('[workshop-slots] update requested', {
+    workshopId: workshop._id.toString(),
+    ownerId: req.user._id.toString(),
+    requested: req.body.slots.length,
+    accepted: slots.length,
+    rejected: rejected.length,
+  });
+  if (rejected.length > 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'All slots must be future ISO date strings with timezone offsets',
+      errors: rejected.slice(0, 5),
+    });
+  }
+  workshop.availableSlots = slots;
   await workshop.save();
-  res.status(200).json({ success: true, data: workshop.availableSlots });
+  res.status(200).json({
+    success: true,
+    data: workshop.availableSlots.map(serializeSlot),
+  });
 });
 
 export const getWorkshopAdminMessages = asyncHandler(async (req, res) => {

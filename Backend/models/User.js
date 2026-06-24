@@ -101,6 +101,17 @@ const userSchema = new mongoose.Schema(
       select: false,
       default: null,
     },
+    passwordResetFailedAttempts: {
+      type: Number,
+      select: false,
+      default: 0,
+      min: 0,
+    },
+    passwordResetLockedUntil: {
+      type: Date,
+      select: false,
+      default: null,
+    },
     vehicles: {
       type: [
         {

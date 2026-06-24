@@ -70,10 +70,26 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
           children: [
             AppBtn(
               label: isWorkshop
-                  ? 'Upload Workshop Permit'
-                  : 'Upload Driver License',
-              onTap: () => _upload(isWorkshop ? 'permit' : 'driver_license'),
+                  ? 'Upload Commercial Register'
+                  : 'Upload Driving License',
+              onTap: () => _upload(
+                isWorkshop ? 'commercial_registration' : 'driver_license',
+              ),
             ),
+            if (isWorkshop) ...[
+              const SizedBox(height: 10),
+              AppBtn(
+                label: 'Upload Tax Card',
+                outline: true,
+                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Tax Card is supporting only. Commercial Register is required for account approval.',
+                    ),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
             Expanded(
               child: _loading

@@ -276,6 +276,11 @@ export const updateWorkshop = asyncHandler(async (req, res) => {
     const approvedDocument = await VerificationDocument.exists({
       workshop: workshop._id,
       status: 'approved',
+      $or: [
+        { documentType: 'COMMERCIAL_REGISTER' },
+        { detectedDocumentType: 'COMMERCIAL_REGISTER' },
+        { kind: 'commercial_registration' },
+      ],
     });
     if (!approvedDocument) {
       return res.status(409).json({

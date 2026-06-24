@@ -106,7 +106,9 @@ class WorkshopPortalService {
   Future<List<DateTime>> updateSlots(List<DateTime> slots) async {
     final response =
         await _client.put('/workshop-portal/slots', {
-              'slots': slots.map((slot) => slot.toIso8601String()).toList(),
+              'slots': slots
+                  .map((slot) => slot.toUtc().toIso8601String())
+                  .toList(),
             })
             as Map<String, dynamic>;
     return (response['data'] as List<dynamic>? ?? const [])
