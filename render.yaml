@@ -1,0 +1,47 @@
+services:
+  - type: pserv
+    runtime: docker
+    name: salahny-ai
+    plan: starter
+    dockerfilePath: Backend/ml_service/Dockerfile
+    dockerContext: .
+    envVars:
+      - key: PORT
+        value: 10000
+
+  - type: web
+    runtime: docker
+    name: salahny-cv
+    plan: starter
+    dockerfilePath: Backend/cv_service/Dockerfile
+    dockerContext: Backend/cv_service
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 10000
+
+  - type: web
+    runtime: node
+    name: salahny-backend
+    plan: starter
+    rootDir: Backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGO_SERVER_SELECTION_TIMEOUT_MS
+        value: 10000
+      - key: ML_SERVICE_HOSTPORT
+        fromService:
+          type: pserv
+          name: salahny-ai
+          property: hostport
+      - key: CV_SERVICE_URL
+        fromService:
+          type: web
+          name: salahny-cv
+          property: host

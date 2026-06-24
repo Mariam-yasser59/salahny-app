@@ -1,0 +1,360 @@
+// lib/features/workshop/ws_requests_screen.dart
+
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../core/errors/app_error_handler.dart';
+import '_ws_shared.dart';
+import 'services/workshop_portal_service.dart';
+import 'ws_req_detail_screen.dart';
+import '../../core/theme/app_theme.dart';
+
+class WsRequestsScreen extends StatefulWidget {
+  const WsRequestsScreen({super.key});
+  @override
+  State<WsRequestsScreen> createState() => _WsRequestsScreenState();
+}
+
+class _WsRequestsScreenState extends State<WsRequestsScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tab;
+  final _service = WorkshopPortalService();
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = TabController(length: 4, vsync: this);
+    _refresh();
+  }
+
+  @override
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
+  }
+
+  Future<void> _refresh() async {
+    await AppErrorHandler.guard<void>(
+      context,
+      () => _service.getBookings(),
+      fallbackMessage: 'Could not load workshop requests right now.',
+    );
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  Future<void> _updateStatus(WsBookingData booking, String status) async {
+    final ok = await AppErrorHandler.guard<bool>(context, () async {
+      await _service.updateBookingStatus(booking.id, status);
+      await _service.getBookings();
+      return true;
+    }, fallbackMessage: 'Could not update this request right now.');
+    if (!mounted || ok != true) return;
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pending = AppData.i.workshopBookings
+        .where((b) => b.status == RequestStatus.pending)
+        .toList();
+    final current = AppData.i.workshopBookings
+        .where(
+          (b) =>
+              b.status == RequestStatus.accepted ||
+              b.status == RequestStatus.inProgress ||
+              b.status == RequestStatus.diagnosticsReady ||
+              b.status == RequestStatus.repairInProgress,
+        )
+        .toList();
+    final done = AppData.i.workshopBookings
+        .where((b) => b.status == RequestStatus.completed)
+        .toList();
+    final closed = AppData.i.workshopBookings
+        .where((b) => b.status == RequestStatus.cancelled)
+        .toList();
+
+    return Scaffold(
+      backgroundColor: AC.bg,
+      appBar: WsBar(
+        title: 'Requests',
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: AC.red.withOpacity(0.12),
+                  borderRadius: Rd.fullA,
+                  border: Border.all(color: AC.red.withOpacity(0.35)),
+                ),
+                child: Text(
+                  '${pending.length} new',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AC.red,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // ── Tab selector ───────────────────────────────────────────────────
+          Container(
+            color: AC.s1,
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+            child: Container(
+              height: 40,
+              decoration: BoxDecoration(color: AC.bg, borderRadius: Rd.mdA),
+              child: TabBar(
+                controller: _tab,
+                indicator: BoxDecoration(
+                  gradient: AC.redGrad,
+                  borderRadius: Rd.mdA,
+                  boxShadow: [
+                    BoxShadow(color: AC.red.withOpacity(0.35), blurRadius: 8),
+                  ],
+                ),
+                indicatorSize: TabBarIndicatorSize.tab,
+                labelColor: Colors.white,
+                unselectedLabelColor: AC.t3,
+                labelStyle: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+                unselectedLabelStyle: const TextStyle(fontSize: 12),
+                dividerColor: Colors.transparent,
+                tabs: [
+                  Tab(text: 'Pending (${pending.length})'),
+                  Tab(text: 'Current (${current.length})'),
+                  Tab(text: 'Done (${done.length})'),
+                  Tab(text: 'Closed (${closed.length})'),
+                ],
+              ),
+            ),
+          ),
+          // ── Tab views ─────────────────────────────────────────────────────
+          Expanded(
+            child: TabBarView(
+              controller: _tab,
+              children: [
+                _BookingList(
+                  bookings: pending,
+                  emptyMsg: 'No pending requests',
+                  mode: _BookingListMode.pending,
+                  onStatusChange: _updateStatus,
+                ),
+                _BookingList(
+                  bookings: current,
+                  emptyMsg: 'No current requests',
+                  mode: _BookingListMode.current,
+                  onStatusChange: _updateStatus,
+                ),
+                _BookingList(
+                  bookings: done,
+                  emptyMsg: 'No completed requests',
+                  mode: _BookingListMode.readOnly,
+                  onStatusChange: _updateStatus,
+                ),
+                _BookingList(
+                  bookings: closed,
+                  emptyMsg: 'No rejected or cancelled requests',
+                  mode: _BookingListMode.readOnly,
+                  onStatusChange: _updateStatus,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BookingList extends StatelessWidget {
+  final List<WsBookingData> bookings;
+  final String emptyMsg;
+  final _BookingListMode mode;
+  final Future<void> Function(WsBookingData booking, String status)?
+  onStatusChange;
+  const _BookingList({
+    required this.bookings,
+    required this.emptyMsg,
+    this.mode = _BookingListMode.pending,
+    this.onStatusChange,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (bookings.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: AC.s2,
+                borderRadius: Rd.lgA,
+                border: Border.all(color: AC.border),
+              ),
+              child: const Icon(Icons.inbox_outlined, size: 32, color: AC.t3),
+            ),
+            const SizedBox(height: 14),
+            Text(emptyMsg, style: const TextStyle(fontSize: 14, color: AC.t3)),
+          ],
+        ),
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 80),
+      itemCount: bookings.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (_, i) => _ReqCard(
+        booking: bookings[i],
+        mode: mode,
+        onAccept: onStatusChange == null
+            ? null
+            : () => onStatusChange!(bookings[i], 'accepted'),
+        onDecline: onStatusChange == null
+            ? null
+            : () => onStatusChange!(bookings[i], 'cancelled'),
+      ).animate().fadeIn(duration: 300.ms, delay: (i * 50).ms),
+    );
+  }
+}
+
+enum _BookingListMode { pending, current, readOnly }
+
+class _ReqCard extends StatelessWidget {
+  final WsBookingData booking;
+  final _BookingListMode mode;
+  final VoidCallback? onAccept;
+  final VoidCallback? onDecline;
+  const _ReqCard({
+    required this.booking,
+    required this.mode,
+    this.onAccept,
+    this.onDecline,
+  });
+
+  @override
+  Widget build(BuildContext context) => WsCard(
+    padding: const EdgeInsets.all(16),
+    onTap: () => Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => WsReqDetailScreen(booking: booking)),
+    ),
+    child: Column(
+      children: [
+        Row(
+          children: [
+            const WsIconBox(Icons.person_rounded, size: 44),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    booking.serviceName,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AC.t1,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${booking.customerName} • ${booking.time}',
+                    style: const TextStyle(fontSize: 12, color: AC.t3),
+                  ),
+                ],
+              ),
+            ),
+            WsChip(booking.status),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            const Icon(Icons.directions_car_rounded, size: 13, color: AC.t3),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                booking.vehicleInfo,
+                style: const TextStyle(fontSize: 12, color: AC.t3),
+              ),
+            ),
+            Text(
+              '\$${booking.price.toInt()}',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: AC.gold,
+              ),
+            ),
+          ],
+        ),
+        if (mode != _BookingListMode.readOnly) ...[
+          const SizedBox(height: 12),
+          const WsDiv(),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: WsBtn(
+                  label: mode == _BookingListMode.pending
+                      ? 'Accept'
+                      : 'In Progress',
+                  small: true,
+                  gold: true,
+                  onTap: mode == _BookingListMode.pending
+                      ? onAccept ?? () {}
+                      : () => onStatusChangeFromContext(
+                          context,
+                          booking,
+                          'in_progress',
+                        ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: WsBtn(
+                  label: mode == _BookingListMode.pending
+                      ? 'Decline'
+                      : 'Complete',
+                  small: true,
+                  outline: true,
+                  onTap: mode == _BookingListMode.pending
+                      ? onDecline ?? () {}
+                      : () => onStatusChangeFromContext(
+                          context,
+                          booking,
+                          'completed',
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    ),
+  );
+
+  void onStatusChangeFromContext(
+    BuildContext context,
+    WsBookingData booking,
+    String status,
+  ) {
+    final state = context.findAncestorStateOfType<_WsRequestsScreenState>();
+    state?._updateStatus(booking, status);
+  }
+}
