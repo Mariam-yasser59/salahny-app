@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_animate/flutter_animate.dart';
@@ -27,6 +28,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _serviceApi = ServiceApi();
   final _vehicleService = VehicleService();
 
+  bool _isRefreshing = false;
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +50,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     } catch (_) {}
 
     if (mounted) setState(() {});
+  }
+
+  Future<void> _refreshDriverHome() async {
+    if (_isRefreshing) return;
+
+    setState(() => _isRefreshing = true);
+
+    try {
+      await Future.wait([
+        _workshopService.getWorkshops(),
+        _serviceApi.getServices(),
+        _serviceApi.getPackages(),
+        if (!AppCache.isGuest) _bookingService.getBookings(),
+        if (!AppCache.isGuest) _vehicleService.getVehicles(),
+      ]);
+
+      if (!mounted) return;
+      setState(() {});
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to refresh home data'),
+          backgroundColor: AC.error,
+        ),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() => _isRefreshing = false);
+    }
   }
 
   @override
@@ -77,7 +111,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     body: IndexedStack(
       index: _tab,
       children: [
-        _HomeTab(onReload: _primeData),
+        _HomeTab(
+          onRefresh: _refreshDriverHome,
+          isRefreshing: _isRefreshing,
+        ),
         const _ServicesTab(),
         AppCache.isGuest ? const _GuestPrompt() : const _DiagnosticsTab(),
         AppCache.isGuest ? const _GuestPrompt() : const _BookingsTab(),
@@ -98,9 +135,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
 // ────────── HOME TAB ──────────────────────────────────────────────────────────
 class _HomeTab extends StatelessWidget {
-  final Future<void> Function() onReload;
+  final Future<void> Function() onRefresh;
+  final bool isRefreshing;
 
-  const _HomeTab({required this.onReload});
+  const _HomeTab({
+    required this.onRefresh,
+    required this.isRefreshing,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -109,8 +150,17 @@ class _HomeTab extends StatelessWidget {
     final vehicle = vehicles.isNotEmpty ? vehicles.first : null;
 
     return RefreshIndicator(
-        color: AC.red,
-        onRefresh: onReload,
+      color: AC.red,
+      backgroundColor: AC.s2,
+      onRefresh: onRefresh,
+      child: ScrollConfiguration(
+        behavior: const MaterialScrollBehavior().copyWith(
+          dragDevices: {
+            PointerDeviceKind.touch,
+            PointerDeviceKind.mouse,
+            PointerDeviceKind.trackpad,
+          },
+        ),
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
@@ -121,14 +171,20 @@ class _HomeTab extends StatelessWidget {
                     height: 265,
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [Color(0xFF6B0A12), AC.red, Color(0xFFD93344)],
+                        colors: [
+                          Color(0xFF6B0A12),
+                          AC.red,
+                          Color(0xFFD93344),
+                        ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                     ),
                   ),
                   Positioned.fill(
-                    child: CustomPaint(painter: _GridPaint(opacity: 0.09)),
+                    child: CustomPaint(
+                      painter: _GridPaint(opacity: 0.09),
+                    ),
                   ),
                   SafeArea(
                     child: Padding(
@@ -212,7 +268,8 @@ class _HomeTab extends StatelessWidget {
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                    CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         vehicle == null
@@ -290,90 +347,106 @@ class _HomeTab extends StatelessWidget {
               ),
             ),
 
-        SliverToBoxAdapter(
-          child: Transform.translate(
-            offset: const Offset(0, -18),
-            child: Container(
-              decoration: const BoxDecoration(
-                color: AC.bg,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+            if (isRefreshing)
+              const SliverToBoxAdapter(
+                child: LinearProgressIndicator(
+                  minHeight: 2,
+                  backgroundColor: AC.bg,
+                  valueColor: AlwaysStoppedAnimation<Color>(AC.red),
+                ),
               ),
+
+            SliverToBoxAdapter(
+              child: Transform.translate(
+                offset: const Offset(0, -18),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: AC.bg,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(22),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 26, 24, 0),
+                    child: Column(
+                      children: [
+                        const SecHeader(title: 'Quick Actions'),
+                        const SizedBox(height: 16),
+                        _QuickGrid(),
+                        const SizedBox(height: 28),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 26, 24, 0),
+                padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Column(
                   children: [
-                    const SecHeader(title: 'Quick Actions'),
-                    const SizedBox(height: 16),
-                    _QuickGrid(),
+                    SecHeader(
+                      title: 'Active Booking',
+                      action: 'All',
+                      onAction: () {
+                        if (AppData.i.bookings.isNotEmpty) {
+                          Navigator.pushNamed(
+                            context,
+                            R.bookingTrack,
+                            arguments: AppData.i.bookings.first.id,
+                          );
+                        } else {
+                          Navigator.pushNamed(context, R.bookService);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    const _ActiveBookingCard(),
                     const SizedBox(height: 28),
                   ],
                 ),
               ),
             ),
-          ),
-        ),
 
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              children: [
-                SecHeader(
-                  title: 'Active Booking',
-                  action: 'All',
-                  onAction: () {
-                    if (AppData.i.bookings.isNotEmpty) {
-                      Navigator.pushNamed(
-                        context,
-                        R.bookingTrack,
-                        arguments: AppData.i.bookings.first.id,
-                      );
-                    } else {
-                      Navigator.pushNamed(context, R.bookService);
-                    }
-                  },
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  left: 24,
+                  right: 24,
+                  bottom: 8,
                 ),
-                const SizedBox(height: 14),
-                const _ActiveBookingCard(),
-                const SizedBox(height: 28),
-              ],
+                child: SecHeader(
+                  title: 'Workshops Near You',
+                  action: 'See All',
+                  onAction: () => Navigator.pushNamed(context, R.workshops),
+                ),
+              ),
             ),
-          ),
-        ),
 
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.only(left: 24, right: 24, bottom: 8),
-            child: SecHeader(
-              title: 'Workshops Near You',
-              action: 'See All',
-              onAction: () => Navigator.pushNamed(context, R.workshops),
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 195,
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: AppData.i.workshops.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 14),
+                  itemBuilder: (_, i) =>
+                      _WorkshopMiniCard(w: AppData.i.workshops[i]),
+                ),
+              ),
             ),
-          ),
-        ),
 
-        SliverToBoxAdapter(
-          child: SizedBox(
-            height: 195,
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
-              scrollDirection: Axis.horizontal,
-              itemCount: AppData.i.workshops.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 14),
-              itemBuilder: (_, i) =>
-                  _WorkshopMiniCard(w: AppData.i.workshops[i]),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
+                child: _AiBanner(),
+              ),
             ),
-          ),
+          ],
         ),
-
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
-            child: _AiBanner(),
-          ),
-        ),
-      ],
-        )
+      ),
     );
   }
 }
