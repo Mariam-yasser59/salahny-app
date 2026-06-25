@@ -12,7 +12,12 @@
           "package_name": "com.example.salahny_fixed"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "835515919837-4oe4lkmg0k6quv6d3d8kkduj5qqeutev.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDsgDpVmJPE0DxQwpv7vh9h1WZ7PCD5W8A"
@@ -20,7 +25,41 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "835515919837-4oe4lkmg0k6quv6d3d8kkduj5qqeutev.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:835515919837:android:c5c1b3a909fe308f7a5a34",
+        "android_client_info": {
+          "package_name": "com.salahny.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "835515919837-4oe4lkmg0k6quv6d3d8kkduj5qqeutev.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDsgDpVmJPE0DxQwpv7vh9h1WZ7PCD5W8A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "835515919837-4oe4lkmg0k6quv6d3d8kkduj5qqeutev.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

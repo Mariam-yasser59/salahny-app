@@ -1,4 +1,4 @@
-package com.example.salahny_fixed
+package com.salahny.app
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 
