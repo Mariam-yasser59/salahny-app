@@ -334,7 +334,15 @@ class _HomeTab extends StatelessWidget {
                                   ),
                                 ),
                                 HealthArc(
-                                  value: (vehicle?.health ?? 0).toDouble(),
+                                  value: () {
+                                    final report = AppCache.latestDiagnosticReport;
+                                    if (report.id.isNotEmpty &&
+                                        vehicle != null &&
+                                        report.vehicleId == vehicle.id) {
+                                      return report.health;
+                                    }
+                                    return (vehicle?.health ?? 100).toDouble();
+                                  }(),
                                 ),
                               ],
                             ),

@@ -198,6 +198,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
     );
     if (!mounted) return;
     setState(() => _scanning = false);
+    _scan.stop();
+    _scan.reset();
     if (report != null) Navigator.pushNamed(context, R.diagResult);
   }
 

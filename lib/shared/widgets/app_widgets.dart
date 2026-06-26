@@ -190,21 +190,21 @@ class HealthArc extends StatelessWidget {
   Color get _c => value>=80?AC.success:value>=60?AC.warning:AC.error;
   @override Widget build(BuildContext context) => CustomPaint(
     painter:_ArcPaint(value:value, color:_c),
-    child:SizedBox(width:120, height:72, child:Column(mainAxisAlignment:MainAxisAlignment.end, children:[
-      Text('${value.toInt()}%', style:TextStyle(fontSize:26, fontWeight:FontWeight.w800, color:_c)),
+    child:SizedBox(width:130, height:82, child:Column(mainAxisAlignment:MainAxisAlignment.end, children:[
+      Text('${value.toInt()}%', style:TextStyle(fontSize:22, fontWeight:FontWeight.w800, color:_c)),
       Text('Health', style:const TextStyle(fontSize:10, color:AC.t3)),
-      const SizedBox(height:4),
+      const SizedBox(height:10),
     ])));
 }
 class _ArcPaint extends CustomPainter {
   final double value; final Color color;
   const _ArcPaint({required this.value, required this.color});
   @override void paint(Canvas canvas, Size size) {
-    final c=Offset(size.width/2,size.height-6); const r=50.0; const sw=7.0;
+    final c=Offset(size.width/2,size.height-6); const r=55.0; const sw=7.0;
     canvas.drawArc(Rect.fromCircle(center:c,radius:r), math.pi, math.pi, false,
       Paint()..color=AC.border..style=PaintingStyle.stroke..strokeWidth=sw..strokeCap=StrokeCap.round);
     canvas.drawArc(Rect.fromCircle(center:c,radius:r), math.pi, math.pi*(value/100), false,
-      Paint()..shader=LinearGradient(colors:[color.withOpacity(0.5),color])
+      Paint()..shader=LinearGradient(colors:[color.withValues(alpha:0.5),color])
         .createShader(Rect.fromCircle(center:c,radius:r))
         ..style=PaintingStyle.stroke..strokeWidth=sw..strokeCap=StrokeCap.round);
   }

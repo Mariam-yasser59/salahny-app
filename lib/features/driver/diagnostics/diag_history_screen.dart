@@ -27,7 +27,7 @@ class _DiagHistoryScreenState extends State<DiagHistoryScreen> {
   }
 
   Future<void> _load() async {
-    await AppErrorHandler.guard<void>(
+    await AppErrorHandler.guard<List<DiagnosticReport>>(
       context,
       () => _service.getHistory(),
       fallbackMessage: 'Could not load diagnostic history right now.',
@@ -150,7 +150,7 @@ class _HistoryTile extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: Rd.lgA,
-        border: Border.all(color: _riskColor.withOpacity(0.25), width: 0.8),
+        border: Border.all(color: _riskColor.withValues(alpha: 0.25), width: 0.8),
       ),
       child: Row(
         children: [
@@ -158,9 +158,9 @@ class _HistoryTile extends StatelessWidget {
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              color: _riskColor.withOpacity(0.12),
+              color: _riskColor.withValues(alpha: 0.12),
               borderRadius: Rd.mdA,
-              border: Border.all(color: _riskColor.withOpacity(0.3)),
+              border: Border.all(color: _riskColor.withValues(alpha: 0.3)),
             ),
             child: Icon(_icon, color: _riskColor, size: 24),
           ),
@@ -195,9 +195,9 @@ class _HistoryTile extends StatelessWidget {
                   vertical: 5,
                 ),
                 decoration: BoxDecoration(
-                  color: _riskColor.withOpacity(0.12),
+                  color: _riskColor.withValues(alpha: 0.12),
                   borderRadius: Rd.fullA,
-                  border: Border.all(color: _riskColor.withOpacity(0.3)),
+                  border: Border.all(color: _riskColor.withValues(alpha: 0.3)),
                 ),
                 child: Text(
                   _riskLabel,
