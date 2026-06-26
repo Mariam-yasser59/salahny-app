@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' as fmap;
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:latlong2/latlong.dart' as osm;
+import 'package:google_maps_flutter/google_maps_flutter.dart' as gm;
+import 'package:latlong2/latlong.dart';
 
 import '../../core/constants/location_constants.dart';
 import '../../core/theme/app_theme.dart';
@@ -52,97 +52,109 @@ class SalahnyMap extends StatelessWidget {
       '${center.latitude}_${center.longitude}_${markers.length}',
     );
 
-    final mapMarkers = <Marker>{
-      for (final marker in markers)
-        Marker(
-          markerId: MarkerId(marker.id),
-          position: LatLng(marker.latitude, marker.longitude),
-          infoWindow: InfoWindow(title: marker.title, snippet: marker.snippet),
-          onTap: marker.onTap,
-        ),
-      if (currentLocation != null)
-        Marker(
-          markerId: const MarkerId('current_location'),
-          position: currentLocation!,
-          infoWindow: const InfoWindow(title: 'Current location'),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueAzure,
-          ),
-        ),
-    };
+    final useOsm =
+        kIsWeb ||
+        !LocationConstants.useGoogleMaps ||
+        !LocationConstants.googleMapsConfigured;
 
     return ClipRRect(
       borderRadius: Rd.lgA,
       child: SizedBox(
         height: height,
-        child:
-        kIsWeb ||
-            !LocationConstants.useGoogleMaps ||
-            !LocationConstants.googleMapsConfigured
+        child: useOsm
             ? fmap.FlutterMap(
-          key: mapKey,
-          options: fmap.MapOptions(
-            initialCenter: osm.LatLng(center.latitude, center.longitude),
-            initialZoom: 13,
-            onTap: onTap == null
-                ? null
-                : (_, point) =>
-                onTap!(LatLng(point.latitude, point.longitude)),
-          ),
-          children: [
-            fmap.TileLayer(
-              urlTemplate:
-              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.example.salahny_fixed',
-            ),
-            fmap.MarkerLayer(
-              markers: [
-                for (final marker in markers)
-                  fmap.Marker(
-                    point: osm.LatLng(marker.latitude, marker.longitude),
-                    width: 42,
-                    height: 42,
-                    child: GestureDetector(
-                      onTap: marker.onTap,
-                      child: Tooltip(
-                        message: marker.snippet == null
-                            ? marker.title
-                            : '${marker.title}\n${marker.snippet}',
-                        child: const Icon(
-                          Icons.location_on,
-                          color: AC.red,
-                          size: 36,
+                key: mapKey,
+                options: fmap.MapOptions(
+                  initialCenter: center,
+                  initialZoom: 13,
+                  onTap: onTap == null
+                      ? null
+                      : (_, point) =>
+                          onTap!(LatLng(point.latitude, point.longitude)),
+                ),
+                children: [
+                  fmap.TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.example.salahny_fixed',
+                  ),
+                  fmap.MarkerLayer(
+                    markers: [
+                      for (final marker in markers)
+                        fmap.Marker(
+                          point: LatLng(marker.latitude, marker.longitude),
+                          width: 42,
+                          height: 42,
+                          child: GestureDetector(
+                            onTap: marker.onTap,
+                            child: Tooltip(
+                              message: marker.snippet == null
+                                  ? marker.title
+                                  : '${marker.title}\n${marker.snippet}',
+                              child: const Icon(
+                                Icons.location_on,
+                                color: AC.red,
+                                size: 36,
+                              ),
+                            ),
+                          ),
                         ),
+                      if (currentLocation != null)
+                        fmap.Marker(
+                          point: LatLng(
+                            currentLocation!.latitude,
+                            currentLocation!.longitude,
+                          ),
+                          width: 42,
+                          height: 42,
+                          child: const Icon(
+                            Icons.my_location,
+                            color: AC.info,
+                            size: 28,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              )
+            : gm.GoogleMap(
+                key: mapKey,
+                initialCameraPosition: gm.CameraPosition(
+                  target: gm.LatLng(center.latitude, center.longitude),
+                  zoom: 13,
+                ),
+                markers: {
+                  for (final marker in markers)
+                    gm.Marker(
+                      markerId: gm.MarkerId(marker.id),
+                      position: gm.LatLng(marker.latitude, marker.longitude),
+                      infoWindow: gm.InfoWindow(
+                        title: marker.title,
+                        snippet: marker.snippet,
+                      ),
+                      onTap: marker.onTap,
+                    ),
+                  if (currentLocation != null)
+                    gm.Marker(
+                      markerId: const gm.MarkerId('current_location'),
+                      position: gm.LatLng(
+                        currentLocation!.latitude,
+                        currentLocation!.longitude,
+                      ),
+                      infoWindow:
+                          const gm.InfoWindow(title: 'Current location'),
+                      icon: gm.BitmapDescriptor.defaultMarkerWithHue(
+                        gm.BitmapDescriptor.hueAzure,
                       ),
                     ),
-                  ),
-                if (currentLocation != null)
-                  fmap.Marker(
-                    point: osm.LatLng(
-                      currentLocation!.latitude,
-                      currentLocation!.longitude,
-                    ),
-                    width: 42,
-                    height: 42,
-                    child: const Icon(
-                      Icons.my_location,
-                      color: AC.info,
-                      size: 28,
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        )
-            : GoogleMap(
-          key: mapKey,
-          initialCameraPosition: CameraPosition(target: center, zoom: 13),
-          markers: mapMarkers,
-          myLocationEnabled: currentLocation != null,
-          myLocationButtonEnabled: false,
-          zoomControlsEnabled: false,
-          onTap: onTap,
-        ),
+                },
+                myLocationEnabled: currentLocation != null,
+                myLocationButtonEnabled: false,
+                zoomControlsEnabled: false,
+                onTap: onTap == null
+                    ? null
+                    : (p) => onTap!(LatLng(p.latitude, p.longitude)),
+              ),
       ),
     );
   }

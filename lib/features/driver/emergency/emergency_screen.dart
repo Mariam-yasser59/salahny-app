@@ -7,7 +7,7 @@ import '../../../shared/services/app_cache.dart';
 import '../../../shared/services/location_service.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../../../shared/widgets/salahny_map.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 import 'services/emergency_service.dart';
 
 class EmergencyScreen extends StatefulWidget {
