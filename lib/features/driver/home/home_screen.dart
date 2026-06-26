@@ -8,6 +8,7 @@ import '../../bookings/services/booking_service.dart';
 import '../../workshops/services/workshop_service.dart';
 import '../../services/services/service_api.dart';
 import '../vehicles/services/vehicle_service.dart';
+import '../diagnostics/services/diagnostics_service.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../../../shared/services/app_cache.dart';
@@ -27,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _bookingService = BookingService();
   final _serviceApi = ServiceApi();
   final _vehicleService = VehicleService();
+  final _diagnosticsService = DiagnosticsService();
 
   bool _isRefreshing = false;
 
@@ -46,6 +48,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _serviceApi.getPackages(),
         if (!AppCache.isGuest) _bookingService.getBookings(),
         if (!AppCache.isGuest) _vehicleService.getVehicles(),
+        if (!AppCache.isGuest) _diagnosticsService.getHistory(),
       ]);
     } catch (_) {}
 

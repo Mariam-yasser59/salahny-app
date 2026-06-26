@@ -406,6 +406,7 @@ const createDiagnostic = async ({
     errorMessage,
     ...template,
   });
+  await Vehicle.findByIdAndUpdate(vehicleId, { health: template.health });
   await logActivity({
     actor: req.user.name,
     actorRole: req.user.role,
