@@ -303,8 +303,8 @@ class _WsProfileScreenState extends State<WsProfileScreen> {
             children: [
               Expanded(
                 child: _MiniStat(
-                  '98%',
-                  'Completion',
+                  '${profile.completedServices}',
+                  'Completed',
                   Icons.done_all_rounded,
                   AC.success,
                 ),
@@ -312,9 +312,9 @@ class _WsProfileScreenState extends State<WsProfileScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: _MiniStat(
-                  '38%',
-                  'Repeat Clients',
-                  Icons.people_rounded,
+                  '${profile.reviewCount}',
+                  'Reviews',
+                  Icons.star_rounded,
                   AC.info,
                 ),
               ),

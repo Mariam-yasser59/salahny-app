@@ -337,6 +337,10 @@ class BookingModel {
   final String time;
   final String slotIso;
   final double price;
+  final bool driverReviewed;
+  final bool workshopReviewed;
+  final double? driverRating;
+  final double? workshopRating;
 
   const BookingModel({
     required this.id,
@@ -347,6 +351,10 @@ class BookingModel {
     required this.time,
     required this.slotIso,
     required this.price,
+    this.driverReviewed = false,
+    this.workshopReviewed = false,
+    this.driverRating,
+    this.workshopRating,
   });
 
   static const placeholder = BookingModel(
@@ -358,6 +366,8 @@ class BookingModel {
     time: '',
     slotIso: '',
     price: 0,
+    driverReviewed: false,
+    workshopReviewed: false,
   );
 }
 
@@ -520,6 +530,10 @@ class WsBookingData {
   final double price;
   final double progress;
   final String? attachedDiagnosticId;
+  final bool driverReviewed;
+  final bool workshopReviewed;
+  final double? driverRating;
+  final double? workshopRating;
 
   const WsBookingData({
     required this.id,
@@ -533,6 +547,10 @@ class WsBookingData {
     required this.price,
     this.progress = 0.0,
     this.attachedDiagnosticId,
+    this.driverReviewed = false,
+    this.workshopReviewed = false,
+    this.driverRating,
+    this.workshopRating,
   });
 }
 

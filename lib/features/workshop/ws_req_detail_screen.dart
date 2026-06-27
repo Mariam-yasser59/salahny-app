@@ -5,6 +5,7 @@ import 'ws_diagnostics_screen.dart';
 import 'ws_chat_screen.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/errors/app_error_handler.dart';
+import '../ratings/services/rating_service.dart';
 import 'services/workshop_portal_service.dart';
 
 class WsReqDetailScreen extends StatefulWidget {
@@ -19,6 +20,11 @@ class WsReqDetailScreen extends StatefulWidget {
 class _WsReqDetailScreenState extends State<WsReqDetailScreen> {
   late RequestStatus _status;
   final _service = WorkshopPortalService();
+  final _ratingService = RatingService();
+  final _ratingComment = TextEditingController();
+  late bool _workshopReviewed;
+  int _driverRating = 5;
+  bool _ratingLoading = false;
 
   String get _serviceNotes =>
       '${widget.booking.customerName} requested ${widget.booking.serviceName.toLowerCase()} '
@@ -29,6 +35,13 @@ class _WsReqDetailScreenState extends State<WsReqDetailScreen> {
   void initState() {
     super.initState();
     _status = widget.booking.status;
+    _workshopReviewed = widget.booking.workshopReviewed;
+  }
+
+  @override
+  void dispose() {
+    _ratingComment.dispose();
+    super.dispose();
   }
 
   Future<void> _setStatus(RequestStatus next, String backendStatus) async {
@@ -52,6 +65,31 @@ class _WsReqDetailScreenState extends State<WsReqDetailScreen> {
       _setStatus(RequestStatus.repairInProgress, 'repair_in_progress');
 
   Future<void> _complete() => _setStatus(RequestStatus.completed, 'completed');
+
+  Future<void> _rateDriver() async {
+    setState(() => _ratingLoading = true);
+    final ok = await AppErrorHandler.guard<bool>(context, () async {
+      await _ratingService.submitRating(
+        bookingId: widget.booking.id,
+        rating: _driverRating,
+        comment: _ratingComment.text,
+      );
+      await _service.syncDashboard();
+      return true;
+    }, fallbackMessage: 'Could not submit this driver rating.');
+    if (!mounted) return;
+    setState(() {
+      _ratingLoading = false;
+      if (ok == true) _workshopReviewed = true;
+    });
+    if (ok == true) {
+      AppErrorHandler.showMessage(
+        context,
+        'Driver rating submitted',
+        isError: false,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -325,6 +363,61 @@ class _WsReqDetailScreenState extends State<WsReqDetailScreen> {
                     ],
                   ),
                 ).animate().fadeIn(duration: 350.ms, delay: 240.ms),
+
+              if (_status == RequestStatus.completed && !_workshopReviewed) ...[
+                const SizedBox(height: 14),
+                WsCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'RATE DRIVER',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: AC.t3,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: List.generate(
+                          5,
+                          (index) => IconButton(
+                            onPressed: _ratingLoading
+                                ? null
+                                : () =>
+                                      setState(() => _driverRating = index + 1),
+                            icon: Icon(
+                              index < _driverRating
+                                  ? Icons.star_rounded
+                                  : Icons.star_outline_rounded,
+                              color: AC.gold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      TextField(
+                        controller: _ratingComment,
+                        minLines: 1,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          hintText: 'Add a short note',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _PrimaryBtn(
+                        label: _ratingLoading
+                            ? 'Submitting...'
+                            : 'Submit Driver Rating',
+                        icon: Icons.star_rounded,
+                        onTap: _ratingLoading ? () {} : _rateDriver,
+                      ),
+                    ],
+                  ),
+                ).animate().fadeIn(duration: 350.ms, delay: 280.ms),
+              ],
 
               const SizedBox(height: 30),
             ],

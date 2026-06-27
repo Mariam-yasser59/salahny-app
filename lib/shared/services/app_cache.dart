@@ -18,6 +18,8 @@ class WorkshopProfileData {
   final double monthlyRevenue;
   final String revenuePeriod;
   final String payoutMethod;
+  final int completedServices;
+  final int reviewCount;
 
   const WorkshopProfileData({
     required this.id,
@@ -34,6 +36,8 @@ class WorkshopProfileData {
     required this.monthlyRevenue,
     required this.revenuePeriod,
     required this.payoutMethod,
+    this.completedServices = 0,
+    this.reviewCount = 0,
   });
 }
 

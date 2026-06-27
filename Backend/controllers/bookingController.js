@@ -4,6 +4,7 @@ import asyncHandler from '../utils/asyncHandler.js';
 import { createNotification } from './notificationController.js';
 import Earning from '../models/Earning.js';
 import Diagnostic from '../models/Diagnostic.js';
+import Review from '../models/Review.js';
 import { sendEmail } from '../services/emailService.js';
 
 const numberOrNull = (value) => {
@@ -42,6 +43,44 @@ export const createBookingEarning = async (booking) => {
     },
     { upsert: true, new: true },
   );
+};
+
+const addReviewState = async (bookings) => {
+  const list = Array.isArray(bookings) ? bookings : [bookings];
+  const ids = list.map((booking) => booking._id);
+  const reviews = await Review.find({ booking: { $in: ids } }).select(
+    'booking reviewerRole rating comment',
+  );
+  const byBooking = new Map();
+  reviews.forEach((review) => {
+    const key = review.booking.toString();
+    const state = byBooking.get(key) || {
+      driverReviewed: false,
+      workshopReviewed: false,
+      driverRating: null,
+      workshopRating: null,
+    };
+    if (review.reviewerRole === 'driver') {
+      state.driverReviewed = true;
+      state.driverRating = review.rating;
+    }
+    if (review.reviewerRole === 'workshop') {
+      state.workshopReviewed = true;
+      state.workshopRating = review.rating;
+    }
+    byBooking.set(key, state);
+  });
+
+  return list.map((booking) => {
+    const raw = booking.toObject ? booking.toObject() : booking;
+    const state = byBooking.get(booking._id.toString()) || {
+      driverReviewed: false,
+      workshopReviewed: false,
+      driverRating: null,
+      workshopRating: null,
+    };
+    return { ...raw, reviewState: state };
+  });
 };
 
 export const createBooking = asyncHandler(async (req, res) => {
@@ -224,11 +263,12 @@ export const getBookings = asyncHandler(async (req, res) => {
   const bookings = await Booking.find(filter)
     .populate('user', 'name email role')
     .populate('workshop', 'name location');
+  const data = await addReviewState(bookings);
 
   res.status(200).json({
     success: true,
     count: bookings.length,
-    data: bookings,
+    data,
   });
 });
 
@@ -256,9 +296,11 @@ export const getBookingById = asyncHandler(async (req, res) => {
     });
   }
 
+  const [data] = await addReviewState(booking);
+
   res.status(200).json({
     success: true,
-    data: booking,
+    data,
   });
 });
 
@@ -360,9 +402,11 @@ export const updateBookingStatus = asyncHandler(async (req, res) => {
     });
   }
 
+  const [data] = await addReviewState(populatedBooking);
+
   res.status(200).json({
     success: true,
     message: 'Booking status updated successfully',
-    data: populatedBooking,
+    data,
   });
 });

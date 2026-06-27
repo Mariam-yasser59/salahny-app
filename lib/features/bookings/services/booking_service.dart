@@ -56,6 +56,20 @@ class BookingService {
       time: date == null ? '10:00 AM' : _formatTime(date),
       slotIso: date?.toIso8601String() ?? '',
       price: (json['total'] as num?)?.toDouble() ?? 0,
+      driverReviewed:
+          (json['reviewState'] as Map<String, dynamic>?)?['driverReviewed'] ==
+          true,
+      workshopReviewed:
+          (json['reviewState'] as Map<String, dynamic>?)?['workshopReviewed'] ==
+          true,
+      driverRating:
+          ((json['reviewState'] as Map<String, dynamic>?)?['driverRating']
+                  as num?)
+              ?.toDouble(),
+      workshopRating:
+          ((json['reviewState'] as Map<String, dynamic>?)?['workshopRating']
+                  as num?)
+              ?.toDouble(),
     );
   }
 

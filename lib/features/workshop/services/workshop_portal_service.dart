@@ -34,6 +34,9 @@ class WorkshopPortalService {
             profileJson['revenuePeriod']?.toString() ?? 'Current period',
         payoutMethod:
             profileJson['payoutMethod']?.toString() ?? 'Bank Transfer',
+        completedServices:
+            (profileJson['completedServices'] as num?)?.toInt() ?? 0,
+        reviewCount: (profileJson['reviewCount'] as num?)?.toInt() ?? 0,
       ),
       bookings: bookingsJson.map(_mapBooking).toList(growable: false),
     );
@@ -156,6 +159,10 @@ class WorkshopPortalService {
       status: _parseStatus(json['status']?.toString()),
       price: (json['price'] as num?)?.toDouble() ?? 0,
       progress: (json['progress'] as num?)?.toDouble() ?? 0,
+      driverReviewed: json['driverReviewed'] == true,
+      workshopReviewed: json['workshopReviewed'] == true,
+      driverRating: (json['driverRating'] as num?)?.toDouble(),
+      workshopRating: (json['workshopRating'] as num?)?.toDouble(),
     );
   }
 

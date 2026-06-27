@@ -1,5 +1,6 @@
 import express from 'express';
 
+import Booking from '../models/Booking.js';
 import Service from '../models/Service.js';
 import ServicePackage from '../models/Package.js';
 import Workshop from '../models/Workshop.js';
@@ -19,6 +20,7 @@ const safeWorkshopProjection = {
   availableSlots: 1,
   images: 1,
   rating: 1,
+  reviewCount: 1,
   isVerified: 1,
 };
 
@@ -83,7 +85,17 @@ const mapPublicWorkshop = (workshop) => {
       .filter((slot) => !Number.isNaN(slot.getTime()) && slot.getTime() > Date.now())
       .sort((a, b) => a - b),
     distanceKm,
+    reviewCount: Number(raw.reviewCount) || 0,
+    jobsDone: Number(workshop.$locals?.jobsDone) || 0,
   };
+};
+
+const completedCountsByWorkshop = async (workshopIds) => {
+  const counts = await Booking.aggregate([
+    { $match: { workshop: { $in: workshopIds }, status: 'completed' } },
+    { $group: { _id: '$workshop', count: { $sum: 1 } } },
+  ]);
+  return new Map(counts.map((item) => [item._id.toString(), item.count]));
 };
 
 const sendPublicWorkshops = async (req, res) => {
@@ -106,9 +118,13 @@ const sendPublicWorkshops = async (req, res) => {
   const workshops = await Workshop.find({
     ...filter,
   }).select(safeWorkshopProjection);
+  const completedCounts = await completedCountsByWorkshop(
+    workshops.map((workshop) => workshop._id),
+  );
   workshops.forEach((workshop) => {
     workshop.$locals.viewerLatitude = viewerLatitude;
     workshop.$locals.viewerLongitude = viewerLongitude;
+    workshop.$locals.jobsDone = completedCounts.get(workshop._id.toString()) || 0;
   });
   const data = workshops
     .map(mapPublicWorkshop)
@@ -139,6 +155,8 @@ router.get(
     if (!workshop) {
       return res.status(404).json({ success: false, message: 'Workshop not found' });
     }
+    const completedCounts = await completedCountsByWorkshop([workshop._id]);
+    workshop.$locals.jobsDone = completedCounts.get(workshop._id.toString()) || 0;
     res.status(200).json({ success: true, data: mapPublicWorkshop(workshop) });
   }),
 );

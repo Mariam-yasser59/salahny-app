@@ -77,6 +77,8 @@ class WorkshopService {
       specialty: specialty,
       rating: (json['rating'] as num?)?.toDouble() ?? 4.8,
       distance: (json['distanceKm'] as num?)?.toDouble() ?? 0,
+      reviews: (json['reviewCount'] as num?)?.toInt() ?? 0,
+      jobsDone: (json['jobsDone'] as num?)?.toInt() ?? 0,
       isOpen: true,
       isVerified: json['isVerified'] == true,
       availableSlots: (json['availableSlots'] as List<dynamic>? ?? const [])

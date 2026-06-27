@@ -91,6 +91,17 @@ const userSchema = new mongoose.Schema(
     reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     reviewedAt: { type: Date, default: null },
     rejectionReason: { type: String, default: '', trim: true },
+    rating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
+    },
+    reviewCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     passwordResetTokenHash: {
       type: String,
       select: false,

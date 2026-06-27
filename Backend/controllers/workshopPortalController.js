@@ -9,6 +9,7 @@ import { createNotification } from './notificationController.js';
 import { emitWorkshopAdminMessage } from '../services/realtimeService.js';
 import { createBookingEarning } from './bookingController.js';
 import Diagnostic from '../models/Diagnostic.js';
+import Review from '../models/Review.js';
 import { sendEmail } from '../services/emailService.js';
 
 const toPortalStatus = (status) => {
@@ -42,6 +43,10 @@ const mapPortalBooking = (booking) => ({
   time: booking.date,
   status: toPortalStatus(booking.status),
   price: booking.total || 0,
+  driverReviewed: booking.reviewState?.driverReviewed === true,
+  workshopReviewed: booking.reviewState?.workshopReviewed === true,
+  driverRating: booking.reviewState?.driverRating ?? null,
+  workshopRating: booking.reviewState?.workshopRating ?? null,
   progress:
     booking.status === 'completed'
       ? 1
@@ -49,6 +54,41 @@ const mapPortalBooking = (booking) => ({
         ? 0.45
         : 0.05,
 });
+
+const addReviewState = async (bookings) => {
+  const ids = bookings.map((booking) => booking._id);
+  const reviews = await Review.find({ booking: { $in: ids } }).select(
+    'booking reviewerRole rating',
+  );
+  const byBooking = new Map();
+  reviews.forEach((review) => {
+    const key = review.booking.toString();
+    const state = byBooking.get(key) || {
+      driverReviewed: false,
+      workshopReviewed: false,
+      driverRating: null,
+      workshopRating: null,
+    };
+    if (review.reviewerRole === 'driver') {
+      state.driverReviewed = true;
+      state.driverRating = review.rating;
+    }
+    if (review.reviewerRole === 'workshop') {
+      state.workshopReviewed = true;
+      state.workshopRating = review.rating;
+    }
+    byBooking.set(key, state);
+  });
+  bookings.forEach((booking) => {
+    booking.reviewState = byBooking.get(booking._id.toString()) || {
+      driverReviewed: false,
+      workshopReviewed: false,
+      driverRating: null,
+      workshopRating: null,
+    };
+  });
+  return bookings;
+};
 
 const mapPortalService = (service) => ({
   id: service._id?.toString() || service.id || service.name,
@@ -143,6 +183,7 @@ export const getWorkshopPortalDashboard = asyncHandler(async (req, res) => {
   const bookings = await Booking.find({ workshop: workshop._id })
     .populate('user', 'name phone')
     .sort({ createdAt: -1 });
+  await addReviewState(bookings);
 
   const earned = await Earning.aggregate([
     { $match: { workshop: workshop._id } },
@@ -179,6 +220,8 @@ export const getWorkshopPortalDashboard = asyncHandler(async (req, res) => {
         monthlyRevenue: totalEarnings,
         revenuePeriod: 'Current period',
         payoutMethod: 'Bank Transfer',
+        completedServices: bookings.filter((item) => item.status === 'completed').length,
+        reviewCount: workshop.reviewCount || 0,
       },
       bookings: bookings.map(mapPortalBooking),
       stats: {
@@ -208,6 +251,7 @@ export const getWorkshopPortalBookings = asyncHandler(async (req, res) => {
   const bookings = await Booking.find({ workshop: workshop._id })
     .populate('user', 'name phone')
     .sort({ createdAt: -1 });
+  await addReviewState(bookings);
 
   res.status(200).json({
     success: true,
@@ -401,7 +445,7 @@ export const updateWorkshopPortalBookingStatus = asyncHandler(async (req, res) =
 
   res.status(200).json({
     success: true,
-    data: mapPortalBooking(booking),
+    data: mapPortalBooking((await addReviewState([booking]))[0]),
   });
 });
 
