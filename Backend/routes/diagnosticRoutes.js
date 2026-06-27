@@ -1,10 +1,12 @@
 import express from 'express';
 import {
   diagnosticUpload,
+  createRepairTaskFromDiagnostic,
   getDiagnosticById,
   getDiagnosticHistory,
   runDiagnosticScan,
   runWorkshopBookingDiagnostic,
+  sendDiagnosticToDriver,
   uploadObdFile,
   uploadWorkshopBookingObdFile,
 } from '../controllers/diagnosticController.js';
@@ -25,5 +27,7 @@ router.post(
   diagnosticUpload.single('file'),
   uploadWorkshopBookingObdFile,
 );
+router.post('/:id/send-to-driver', authorize('workshop', 'admin'), sendDiagnosticToDriver);
+router.post('/:id/create-repair-task', authorize('workshop', 'admin'), createRepairTaskFromDiagnostic);
 router.get('/:id', authorize('driver', 'admin'), getDiagnosticById);
 export default router;

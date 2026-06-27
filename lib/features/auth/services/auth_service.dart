@@ -13,12 +13,12 @@ class AuthService {
     String? expectedRole,
   }) async {
     final response =
-    await _client.post('/auth/login', {
-      'email': email,
-      'password': password,
-      if (expectedRole != null) 'expectedRole': expectedRole,
-    }, auth: false)
-    as Map<String, dynamic>;
+        await _client.post('/auth/login', {
+              'email': email,
+              'password': password,
+              if (expectedRole != null) 'expectedRole': expectedRole,
+            }, auth: false)
+            as Map<String, dynamic>;
 
     final data = _unwrapData(response);
     await _saveAuth(data);
@@ -32,13 +32,13 @@ class AuthService {
     String? photoUrl,
   }) async {
     final response =
-    await _client.post('/auth/google', {
-      'idToken': idToken,
-      if (email != null) 'email': email,
-      if (name != null) 'name': name,
-      if (photoUrl != null) 'photoUrl': photoUrl,
-    }, auth: false)
-    as Map<String, dynamic>;
+        await _client.post('/auth/google', {
+              'idToken': idToken,
+              if (email != null) 'email': email,
+              if (name != null) 'name': name,
+              if (photoUrl != null) 'photoUrl': photoUrl,
+            }, auth: false)
+            as Map<String, dynamic>;
 
     final data = _unwrapData(response);
     await _saveAuth(data);
@@ -49,16 +49,18 @@ class AuthService {
     required String email,
   }) async {
     return await _client.post('/auth/forgot-password', {
-      'email': email,
-    }, auth: false)
-    as Map<String, dynamic>;
+          'email': email,
+        }, auth: false)
+        as Map<String, dynamic>;
   }
 
   Future<void> resetPassword({
+    required String email,
     required String token,
     required String password,
   }) async {
     await _client.post('/auth/reset-password', {
+      'email': email,
       'token': token,
       'password': password,
     }, auth: false);
@@ -72,14 +74,14 @@ class AuthService {
     required String role,
   }) async {
     final response =
-    await _client.post('/auth/register', {
-      'name': name,
-      'email': email,
-      'phone': phone,
-      'password': password,
-      'role': role,
-    }, auth: false)
-    as Map<String, dynamic>;
+        await _client.post('/auth/register', {
+              'name': name,
+              'email': email,
+              'phone': phone,
+              'password': password,
+              'role': role,
+            }, auth: false)
+            as Map<String, dynamic>;
 
     final data = _unwrapData(response);
     await _saveAuth(data);

@@ -39,6 +39,8 @@ const toPayload = (doc) => ({
   aiPrediction: doc.aiPrediction,
   status: doc.status,
   errorMessage: doc.errorMessage,
+  sentToDriverAt: doc.sentToDriverAt,
+  repairTaskCreatedAt: doc.repairTaskCreatedAt,
 });
 
 const aliases = {
@@ -325,6 +327,184 @@ const notifyDiagnosticReady = async ({ diagnostic, ownerId, vehicle }) => {
     });
   }
 };
+
+const ensureWorkshopCanManageDiagnostic = async (req, diagnostic) => {
+  if (req.user.role === 'admin') return null;
+
+  const workshop = await Workshop.findOne({ owner: req.user._id });
+  const diagnosticWorkshopId =
+    diagnostic.workshop?._id?.toString?.() ?? diagnostic.workshop?.toString();
+  const bookingWorkshopId =
+    diagnostic.booking?.workshop?._id?.toString?.() ??
+    diagnostic.booking?.workshop?.toString();
+
+  if (
+    !workshop ||
+    (diagnosticWorkshopId !== workshop._id.toString() &&
+      bookingWorkshopId !== workshop._id.toString())
+  ) {
+    throw Object.assign(new Error('Diagnostic report not found for this workshop'), {
+      statusCode: 404,
+    });
+  }
+
+  return workshop;
+};
+
+const getManageableDiagnostic = async (req) => {
+  const diagnostic = await Diagnostic.findById(req.params.id).populate({
+    path: 'booking',
+    populate: { path: 'user', select: 'name email' },
+  });
+
+  if (!diagnostic) {
+    throw Object.assign(new Error('Diagnostic not found'), { statusCode: 404 });
+  }
+
+  const workshop = await ensureWorkshopCanManageDiagnostic(req, diagnostic);
+  return { diagnostic, workshop };
+};
+
+export const sendDiagnosticToDriver = asyncHandler(async (req, res) => {
+  try {
+    const { diagnostic, workshop } = await getManageableDiagnostic(req);
+    const driver = await User.findById(diagnostic.user).select('name email');
+    if (!driver) {
+      return res.status(404).json({ success: false, message: 'Driver not found' });
+    }
+
+    const reportId = diagnostic._id.toString();
+    const bookingId = diagnostic.booking?._id?.toString?.() ?? diagnostic.booking?.toString?.();
+    const reportText = buildReportText(diagnostic);
+    const title = 'Diagnostic report sent';
+    const senderName = workshop?.name || 'Salahny';
+
+    await createNotification({
+      userId: driver._id,
+      title,
+      body: `${senderName} sent your vehicle diagnostic report.`,
+      type: 'ai_report',
+      relatedEntityId: reportId,
+      data: {
+        reportId,
+        diagnosticId: reportId,
+        bookingId,
+        vehicleId: diagnostic.vehicleId,
+        riskLevel: diagnostic.riskLevel,
+      },
+    });
+
+    const emailResult = await sendEmail({
+      to: driver.email,
+      subject: 'Your Salahny diagnostic report',
+      text: `Hello ${driver.name || 'Driver'},\n\n${senderName} sent your diagnostic report.\n\n${reportText}\n\nOpen Salahny to view the full report.\n\nSalahny Team`,
+      html: `
+        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+          <h2>Your Salahny Diagnostic Report</h2>
+          <p>Hello ${escapeHtml(driver.name || 'Driver')},</p>
+          <p>${escapeHtml(senderName)} sent your diagnostic report.</p>
+          <pre style="white-space:pre-wrap;background:#f3f4f6;border-radius:8px;padding:12px">${escapeHtml(reportText)}</pre>
+          <p>Open Salahny to view the full report.</p>
+          <p>Salahny Team</p>
+        </div>`,
+    });
+
+    diagnostic.sentToDriverAt = new Date();
+    diagnostic.sentToDriverBy = req.user._id;
+    await diagnostic.save();
+
+    res.status(200).json({
+      success: true,
+      message: emailResult.sent
+        ? 'Diagnostic report sent to driver'
+        : 'Diagnostic report saved and notified in-app; email delivery is not configured',
+      data: {
+        report: toPayload(diagnostic),
+        emailSent: Boolean(emailResult.sent),
+      },
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ success: false, message: error.message });
+  }
+});
+
+export const createRepairTaskFromDiagnostic = asyncHandler(async (req, res) => {
+  try {
+    const { diagnostic, workshop } = await getManageableDiagnostic(req);
+    if (!diagnostic.booking) {
+      return res.status(409).json({
+        success: false,
+        message: 'This diagnostic is not linked to a booking. Create a booking before starting a repair task.',
+      });
+    }
+
+    const booking = await Booking.findById(diagnostic.booking._id || diagnostic.booking).populate(
+      'user',
+      'name email',
+    );
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Linked booking not found' });
+    }
+    if (['rejected', 'cancelled', 'completed'].includes(booking.status)) {
+      return res.status(409).json({
+        success: false,
+        message: `Cannot create a repair task for a ${booking.status} booking`,
+      });
+    }
+
+    booking.status = 'repair_in_progress';
+    await booking.save();
+
+    diagnostic.repairTaskCreatedAt = new Date();
+    diagnostic.repairTaskCreatedBy = req.user._id;
+    await diagnostic.save();
+
+    const workshopName = workshop?.name || 'The workshop';
+    await createNotification({
+      userId: booking.user._id || booking.user,
+      title: 'Repair task started',
+      body: `${workshopName} created a repair task from your diagnostic report.`,
+      type: 'booking',
+      relatedEntityId: booking._id.toString(),
+      data: {
+        bookingId: booking._id.toString(),
+        diagnosticId: diagnostic._id.toString(),
+        status: booking.status,
+      },
+    });
+
+    await sendEmail({
+      to: booking.user?.email,
+      subject: 'Your repair task has started',
+      text: `Hello ${booking.user?.name || 'Driver'},\n\n${workshopName} created a repair task from your diagnostic report.\n\nService: ${booking.service}\nStatus: Repair in progress\n\nOpen Salahny to follow the request.\n\nSalahny Team`,
+      html: `<p>Hello ${booking.user?.name || 'Driver'},</p><p>${escapeHtml(workshopName)} created a repair task from your diagnostic report.</p><p>Service: ${escapeHtml(booking.service)}<br/>Status: Repair in progress</p><p>Open Salahny to follow the request.</p><p>Salahny Team</p>`,
+    });
+
+    await logActivity({
+      actor: req.user.name,
+      actorRole: req.user.role,
+      action: 'Repair task created from diagnostic',
+      target: booking._id.toString(),
+      details: diagnostic.summary,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Repair task created',
+      data: {
+        report: toPayload(diagnostic),
+        booking: {
+          id: booking._id.toString(),
+          status: booking.status,
+          serviceName: booking.service,
+          date: booking.date,
+        },
+      },
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ success: false, message: error.message });
+  }
+});
 
 const createDiagnostic = async ({
   req,

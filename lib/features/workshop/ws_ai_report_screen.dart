@@ -3,9 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '_ws_shared.dart';
 import '../../core/errors/app_error_handler.dart';
 import '../../core/theme/app_theme.dart';
-import '../../features/chat/services/chat_service.dart';
+import '../../features/driver/diagnostics/services/diagnostics_service.dart';
 import '../../shared/models/models.dart';
-import '../../shared/services/app_cache.dart';
 
 class WsAiReportScreen extends StatelessWidget {
   final String? linkedRequestId;
@@ -46,13 +45,14 @@ class WsAiReportScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _SummaryCard(report: report, ai: ai)
-                      .animate()
-                      .fadeIn(duration: 400.ms),
+                  _SummaryCard(
+                    report: report,
+                    ai: ai,
+                  ).animate().fadeIn(duration: 400.ms),
                   const SizedBox(height: 16),
-                  _ConfidenceCard(confidence: ai.confidence)
-                      .animate()
-                      .fadeIn(duration: 400.ms, delay: 80.ms),
+                  _ConfidenceCard(
+                    confidence: ai.confidence,
+                  ).animate().fadeIn(duration: 400.ms, delay: 80.ms),
                   const SizedBox(height: 16),
                   const _SectionLabel('Technical Explanation'),
                   const SizedBox(height: 10),
@@ -69,38 +69,43 @@ class WsAiReportScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   const _SectionLabel('Recommended Fix'),
                   const SizedBox(height: 10),
-                  _RecommendedFixCard(ai: ai)
-                      .animate()
-                      .fadeIn(duration: 400.ms, delay: 200.ms),
+                  _RecommendedFixCard(
+                    ai: ai,
+                  ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
                   const SizedBox(height: 16),
                   if (report.faultCodes.isNotEmpty) ...[
                     const _SectionLabel('OBD Fault Codes'),
                     const SizedBox(height: 10),
                     ...report.faultCodes.asMap().entries.map(
-                          (e) => Padding(
+                      (e) => Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: _FaultRow(code: e.value)
-                            .animate()
-                            .fadeIn(duration: 350.ms, delay: (220 + e.key * 50).ms),
+                        child: _FaultRow(code: e.value).animate().fadeIn(
+                          duration: 350.ms,
+                          delay: (220 + e.key * 50).ms,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
                   ],
                   const _SectionLabel('Vehicle Vitals'),
                   const SizedBox(height: 10),
-                  _VitalsGrid(vitals: report.vitals)
-                      .animate()
-                      .fadeIn(duration: 400.ms, delay: 300.ms),
+                  _VitalsGrid(
+                    vitals: report.vitals,
+                  ).animate().fadeIn(duration: 400.ms, delay: 300.ms),
                   const SizedBox(height: 16),
                   if (linkedRequestId != null)
-                    _LinkedBanner(requestId: linkedRequestId!)
-                        .animate()
-                        .fadeIn(duration: 400.ms, delay: 360.ms),
+                    _LinkedBanner(
+                      requestId: linkedRequestId!,
+                    ).animate().fadeIn(duration: 400.ms, delay: 360.ms),
                 ],
               ),
             ),
           ),
-          _ActionFooter(ai: ai, linkedRequestId: linkedRequestId),
+          _ActionFooter(
+            report: report,
+            ai: ai,
+            linkedRequestId: linkedRequestId,
+          ),
         ],
       ),
     );
@@ -412,7 +417,7 @@ class _VitalsGrid extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              '${v.value.toStringAsFixed(v.value % 1 == 0 ? 0 : 1)}',
+              v.value.toStringAsFixed(v.value % 1 == 0 ? 0 : 1),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
@@ -469,36 +474,64 @@ class _LinkedBanner extends StatelessWidget {
   );
 }
 
-class _ActionFooter extends StatelessWidget {
+class _ActionFooter extends StatefulWidget {
+  final DiagnosticReport report;
   final AIPrediction ai;
   final String? linkedRequestId;
 
-  const _ActionFooter({required this.ai, required this.linkedRequestId});
+  const _ActionFooter({
+    required this.report,
+    required this.ai,
+    required this.linkedRequestId,
+  });
 
-  Future<void> _share(BuildContext context) async {
-    if (linkedRequestId == null || linkedRequestId!.isEmpty) {
+  @override
+  State<_ActionFooter> createState() => _ActionFooterState();
+}
+
+class _ActionFooterState extends State<_ActionFooter> {
+  final _diagnosticsService = DiagnosticsService();
+  bool _creatingRepairTask = false;
+  bool _sendingToDriver = false;
+
+  String get _linkedBookingId =>
+      widget.linkedRequestId ?? widget.report.bookingId ?? '';
+
+  Future<void> _createRepairTask() async {
+    if (_linkedBookingId.isEmpty) {
       AppErrorHandler.showMessage(
         context,
-        'No linked booking is available for this diagnostic report.',
+        'No linked booking is available. Ask the driver to book a workshop visit first.',
       );
       return;
     }
-    final ok = await AppErrorHandler.guard<bool>(
-      context,
-      () async {
-        await ChatService().shareDiagnostic(
-          bookingId: linkedRequestId!,
-          summary: ai.issue,
-          recommendation: ai.recommendedFix,
-        );
-        return true;
-      },
-      fallbackMessage: 'Could not share the diagnostic report right now.',
-    );
+    setState(() => _creatingRepairTask = true);
+    final ok = await AppErrorHandler.guard<bool>(context, () async {
+      await _diagnosticsService.createRepairTask(widget.report.id);
+      return true;
+    }, fallbackMessage: 'Could not create the repair task right now.');
+    if (!mounted) return;
+    setState(() => _creatingRepairTask = false);
     if (ok != true) return;
     AppErrorHandler.showMessage(
       context,
-      'Diagnostic report shared with the driver',
+      'Repair task created and added to the workshop dashboard',
+      isError: false,
+    );
+  }
+
+  Future<void> _sendToDriver() async {
+    setState(() => _sendingToDriver = true);
+    final ok = await AppErrorHandler.guard<bool>(context, () async {
+      await _diagnosticsService.sendReportToDriver(widget.report.id);
+      return true;
+    }, fallbackMessage: 'Could not send the diagnostic report right now.');
+    if (!mounted) return;
+    setState(() => _sendingToDriver = false);
+    if (ok != true) return;
+    AppErrorHandler.showMessage(
+      context,
+      'Diagnostic report sent to the driver',
       isError: false,
     );
   }
@@ -515,19 +548,23 @@ class _ActionFooter extends StatelessWidget {
       child: Column(
         children: [
           WsBtn(
-            label: 'Create Repair Task',
+            label: _creatingRepairTask ? 'Creating...' : 'Create Repair Task',
             icon: Icons.build_rounded,
-            onTap: () => _share(context),
+            onTap: _creatingRepairTask || _sendingToDriver
+                ? () {}
+                : _createRepairTask,
           ),
           const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: WsBtn(
-                  label: 'Send to Driver',
+                  label: _sendingToDriver ? 'Sending...' : 'Send to Driver',
                   icon: Icons.send_rounded,
                   outline: true,
-                  onTap: () => _share(context),
+                  onTap: _creatingRepairTask || _sendingToDriver
+                      ? () {}
+                      : _sendToDriver,
                 ),
               ),
               const SizedBox(width: 12),

@@ -61,9 +61,7 @@ class DiagnosticsService {
     );
     request.headers['Authorization'] = 'Bearer $token';
     request.fields['vehicleId'] = vehicleId;
-    request.files.add(
-      http.MultipartFile.fromBytes('file', file.bytes!, filename: file.name),
-    );
+    request.files.add(await _multipartFile(file));
     final response = await request.send();
     final body = await response.stream.bytesToString();
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -108,9 +106,7 @@ class DiagnosticsService {
       ),
     );
     request.headers['Authorization'] = 'Bearer $token';
-    request.files.add(
-      http.MultipartFile.fromBytes('file', file.bytes!, filename: file.name),
-    );
+    request.files.add(await _multipartFile(file));
     final response = await request.send();
     final body = await response.stream.bytesToString();
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -125,10 +121,34 @@ class DiagnosticsService {
     return report;
   }
 
+  Future<DiagnosticReport> sendReportToDriver(String reportId) async {
+    final response =
+        await _client.post('/diagnostics/$reportId/send-to-driver', {})
+            as Map<String, dynamic>;
+    final data = response['data'] as Map<String, dynamic>? ?? response;
+    final reportJson = data['report'] as Map<String, dynamic>? ?? data;
+    final report = _mapReport(reportJson);
+    AppCache.setLatestDiagnosticReport(report);
+    return report;
+  }
+
+  Future<DiagnosticReport> createRepairTask(String reportId) async {
+    final response =
+        await _client.post('/diagnostics/$reportId/create-repair-task', {})
+            as Map<String, dynamic>;
+    final data = response['data'] as Map<String, dynamic>? ?? response;
+    final reportJson = data['report'] as Map<String, dynamic>? ?? data;
+    final report = _mapReport(reportJson);
+    AppCache.setLatestDiagnosticReport(report);
+    return report;
+  }
+
   DiagnosticReport _mapReport(Map<String, dynamic> json) {
     return DiagnosticReport(
       id: (json['id'] ?? json['_id'] ?? '').toString(),
       vehicleId: json['vehicleId']?.toString() ?? '',
+      workshopId: json['workshopId']?.toString(),
+      bookingId: json['bookingId']?.toString(),
       date: _formatDate(DateTime.tryParse(json['date']?.toString() ?? '')),
       summary: json['summary']?.toString() ?? '',
       riskLevel: _parseRisk(json['riskLevel']?.toString()),
@@ -173,6 +193,12 @@ class DiagnosticsService {
               modelSource:
                   json['aiPrediction']['modelSource']?.toString() ?? '',
             ),
+      sentToDriverAt: DateTime.tryParse(
+        json['sentToDriverAt']?.toString() ?? '',
+      ),
+      repairTaskCreatedAt: DateTime.tryParse(
+        json['repairTaskCreatedAt']?.toString() ?? '',
+      ),
     );
   }
 
@@ -215,5 +241,19 @@ class DiagnosticsService {
       }
     } catch (_) {}
     return body.isEmpty ? 'Request failed' : body;
+  }
+
+  Future<http.MultipartFile> _multipartFile(PlatformFile file) async {
+    final bytes = file.bytes;
+    if (bytes != null) {
+      return http.MultipartFile.fromBytes('file', bytes, filename: file.name);
+    }
+
+    final path = file.path;
+    if (path == null || path.isEmpty) {
+      throw const ApiException('Selected OBD file could not be read.');
+    }
+
+    return http.MultipartFile.fromPath('file', path, filename: file.name);
   }
 }

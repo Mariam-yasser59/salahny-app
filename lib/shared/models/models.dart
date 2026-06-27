@@ -275,6 +275,8 @@ class AIPrediction {
 class DiagnosticReport {
   final String id;
   final String vehicleId;
+  final String? workshopId;
+  final String? bookingId;
   final String date;
   final String summary;
   final RiskLevel riskLevel;
@@ -283,10 +285,14 @@ class DiagnosticReport {
   final List<OBDVital> vitals;
   final List<String> recommendations;
   final AIPrediction? aiPrediction;
+  final DateTime? sentToDriverAt;
+  final DateTime? repairTaskCreatedAt;
 
   const DiagnosticReport({
     required this.id,
     required this.vehicleId,
+    this.workshopId,
+    this.bookingId,
     required this.date,
     required this.summary,
     required this.riskLevel,
@@ -295,6 +301,8 @@ class DiagnosticReport {
     required this.vitals,
     required this.recommendations,
     this.aiPrediction,
+    this.sentToDriverAt,
+    this.repairTaskCreatedAt,
   });
 }
 

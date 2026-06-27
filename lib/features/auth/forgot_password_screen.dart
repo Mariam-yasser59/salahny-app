@@ -71,16 +71,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Future<void> _resetPassword() async {
-    if (_token.text.trim().isEmpty || _password.text.length < 8) {
+    if (_email.text.trim().isEmpty ||
+        _token.text.trim().isEmpty ||
+        _password.text.length < 8) {
       AppErrorHandler.showMessage(
         context,
-        'Enter the reset token and a password with at least 8 characters.',
+        'Enter your email, reset token, and a password with at least 8 characters.',
       );
       return;
     }
     setState(() => _loading = true);
     final ok = await AppErrorHandler.guard<bool>(context, () async {
       await _auth.resetPassword(
+        email: _email.text.trim(),
         token: _token.text.trim(),
         password: _password.text,
       );

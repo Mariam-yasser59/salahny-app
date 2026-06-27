@@ -109,6 +109,24 @@ const diagnosticSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    sentToDriverAt: {
+      type: Date,
+      default: null,
+    },
+    sentToDriverBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    repairTaskCreatedAt: {
+      type: Date,
+      default: null,
+    },
+    repairTaskCreatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
   },
   {
     timestamps: true,
