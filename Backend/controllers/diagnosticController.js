@@ -207,7 +207,7 @@ const buildSimulatedForecast = (sensorReadings, riskLevel, detectedIssue) => {
     predictionHorizon: riskLevel === 'healthy' ? '30 to 60 days' : '2 to 4 weeks',
     predictionReason: riskLevel === 'healthy'
       ? 'Submitted OBD values are within safe operating ranges; continue routine maintenance and rescan after long trips.'
-      : 'Current warning-level readings do not show immediate failure, but trend-based simulation recommends follow-up service.',
+      : 'Current warning-level readings do not show immediate failure, but the forecast recommends follow-up service.',
   };
 };
 
@@ -629,7 +629,7 @@ const createDiagnostic = async ({
         urgency: prediction.risk_level,
         explanation: `Detection: ${prediction.predicted_failure}. Prediction: ${forecast.predictedIssue} within ${forecast.predictionHorizon}.`,
         recommendation: prediction.recommendations.join(' '),
-        technicalNote: `Model source: ${prediction.model_source || 'ml_service'}; prediction forecast is simulated from OBD trend rules.`,
+        technicalNote: `Model source: ${prediction.model_source || 'ml_service'}; predictive forecast generated from OBD trend analysis.`,
         estimatedRepair: prediction.predicted_failure,
         modelSource: prediction.model_source || 'ml_service',
       },

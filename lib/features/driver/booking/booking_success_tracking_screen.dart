@@ -9,6 +9,7 @@ import '../../../core/network/realtime_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/services/app_cache.dart';
 import '../../../shared/widgets/app_widgets.dart';
+import '../../ratings/services/rating_service.dart';
 import 'services/tracking_service.dart';
 
 class BookingSuccessTrackingScreen extends StatefulWidget {
@@ -279,6 +280,11 @@ class _BookingSuccessTrackingScreenState
             ),
           ),
           const SizedBox(height: 16),
+          if (booking.status.toLowerCase() == 'completed' &&
+              !booking.driverReviewed) ...[
+            _RateWorkshopCard(bookingId: booking.id),
+            const SizedBox(height: 16),
+          ],
           AppBtn(
             label: 'Chat with Mechanic',
             outline: true,
@@ -355,6 +361,107 @@ class _BookingSuccessTrackingScreenState
       default:
         return 'Your request was sent and is waiting for workshop review.';
     }
+  }
+}
+
+class _RateWorkshopCard extends StatefulWidget {
+  const _RateWorkshopCard({required this.bookingId});
+
+  final String bookingId;
+
+  @override
+  State<_RateWorkshopCard> createState() => _RateWorkshopCardState();
+}
+
+class _RateWorkshopCardState extends State<_RateWorkshopCard> {
+  final _service = RatingService();
+  final _comment = TextEditingController();
+  int _rating = 5;
+  bool _loading = false;
+  bool _submitted = false;
+
+  @override
+  void dispose() {
+    _comment.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    setState(() => _loading = true);
+    try {
+      await _service.submitRating(
+        bookingId: widget.bookingId,
+        rating: _rating,
+        comment: _comment.text,
+      );
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _submitted = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Workshop rating submitted')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_submitted) return const SizedBox.shrink();
+    return ACard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Rate this workshop',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AC.t1,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: List.generate(
+              5,
+              (index) => IconButton(
+                onPressed: _loading
+                    ? null
+                    : () => setState(() => _rating = index + 1),
+                icon: Icon(
+                  index < _rating
+                      ? Icons.star_rounded
+                      : Icons.star_outline_rounded,
+                  color: AC.gold,
+                ),
+              ),
+            ),
+          ),
+          TextField(
+            controller: _comment,
+            minLines: 1,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              hintText: 'Add a short note',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          AppBtn(
+            label: _loading ? 'Submitting...' : 'Submit Rating',
+            onTap: _loading ? () {} : _submit,
+            icon: const Icon(Icons.star_rounded, color: Colors.white, size: 18),
+          ),
+        ],
+      ),
+    );
   }
 }
 
