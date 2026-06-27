@@ -370,11 +370,11 @@ class _AiPredictionCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'AI Prediction',
+                    'AI Detection',
                     style: TextStyle(fontSize: 12, color: AC.t3),
                   ),
                   Text(
-                    ai.issue,
+                    ai.detectionLabel,
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
@@ -422,6 +422,39 @@ class _AiPredictionCard extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 14),
+        const Text(
+          'Prediction',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: AC.t3,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          ai.predictionLabel,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: AC.gold,
+            height: 1.4,
+          ),
+        ),
+        if (ai.predictionHorizon.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            'Expected horizon: ${ai.predictionHorizon}',
+            style: const TextStyle(fontSize: 12, color: AC.t3),
+          ),
+        ],
+        if (ai.predictionReason.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            ai.predictionReason,
+            style: const TextStyle(fontSize: 12, color: AC.t2, height: 1.45),
+          ),
+        ],
         if (ai.explanation.isNotEmpty) ...[
           const SizedBox(height: 14),
           Text(

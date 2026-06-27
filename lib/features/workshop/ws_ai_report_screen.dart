@@ -55,6 +55,10 @@ class WsAiReportScreen extends StatelessWidget {
                     confidence: ai.confidence,
                   ).animate().fadeIn(duration: 400.ms, delay: 80.ms),
                   const SizedBox(height: 16),
+                  _DetectionPredictionCard(
+                    ai: ai,
+                  ).animate().fadeIn(duration: 400.ms, delay: 120.ms),
+                  const SizedBox(height: 16),
                   const _SectionLabel('Technical Explanation'),
                   const SizedBox(height: 10),
                   WsCard(
@@ -287,6 +291,52 @@ class _ConfidenceCard extends StatelessWidget {
             ),
           ),
         ),
+      ],
+    ),
+  );
+}
+
+class _DetectionPredictionCard extends StatelessWidget {
+  final AIPrediction ai;
+  const _DetectionPredictionCard({required this.ai});
+
+  @override
+  Widget build(BuildContext context) => WsCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionLabel('Detection'),
+        const SizedBox(height: 8),
+        Text(
+          ai.detectionLabel,
+          style: const TextStyle(fontSize: 13, color: AC.t2, height: 1.5),
+        ),
+        const SizedBox(height: 14),
+        const _SectionLabel('Prediction'),
+        const SizedBox(height: 8),
+        Text(
+          ai.predictionLabel,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            color: AC.gold,
+            height: 1.45,
+          ),
+        ),
+        if (ai.predictionHorizon.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            'Expected horizon: ${ai.predictionHorizon}',
+            style: const TextStyle(fontSize: 12, color: AC.t3),
+          ),
+        ],
+        if (ai.predictionReason.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            ai.predictionReason,
+            style: const TextStyle(fontSize: 12, color: AC.t2, height: 1.45),
+          ),
+        ],
       ],
     ),
   );

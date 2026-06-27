@@ -179,6 +179,14 @@ class DiagnosticsService {
           : AIPrediction(
               hasFault: json['aiPrediction']['hasFault'] == true,
               issue: json['aiPrediction']['issue']?.toString() ?? '',
+              detectedIssue:
+                  json['aiPrediction']['detectedIssue']?.toString() ?? '',
+              predictedIssue:
+                  json['aiPrediction']['predictedIssue']?.toString() ?? '',
+              predictionHorizon:
+                  json['aiPrediction']['predictionHorizon']?.toString() ?? '',
+              predictionReason:
+                  json['aiPrediction']['predictionReason']?.toString() ?? '',
               confidence:
                   (json['aiPrediction']['confidence'] as num?)?.toDouble() ?? 0,
               urgency: _parseRisk(json['aiPrediction']['urgency']?.toString()),

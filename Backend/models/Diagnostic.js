@@ -89,6 +89,10 @@ const diagnosticSchema = new mongoose.Schema(
         default: false,
       },
       issue: String,
+      detectedIssue: String,
+      predictedIssue: String,
+      predictionHorizon: String,
+      predictionReason: String,
       confidence: Number,
       urgency: {
         type: String,

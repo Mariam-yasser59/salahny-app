@@ -248,6 +248,10 @@ class OBDFaultCode {
 class AIPrediction {
   final bool hasFault;
   final String issue;
+  final String detectedIssue;
+  final String predictedIssue;
+  final String predictionHorizon;
+  final String predictionReason;
   final double confidence;
   final RiskLevel urgency;
   final String explanation;
@@ -259,6 +263,10 @@ class AIPrediction {
   const AIPrediction({
     required this.hasFault,
     required this.issue,
+    this.detectedIssue = '',
+    this.predictedIssue = '',
+    this.predictionHorizon = '',
+    this.predictionReason = '',
     required this.confidence,
     required this.urgency,
     required this.explanation,
@@ -270,6 +278,9 @@ class AIPrediction {
 
   String get repairCategory => estimatedRepair;
   String get recommendedFix => recommendation;
+  String get detectionLabel => detectedIssue.isNotEmpty ? detectedIssue : issue;
+  String get predictionLabel =>
+      predictedIssue.isNotEmpty ? predictedIssue : issue;
 }
 
 class DiagnosticReport {

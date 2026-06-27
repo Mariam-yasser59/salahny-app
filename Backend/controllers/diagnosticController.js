@@ -152,6 +152,65 @@ const FAULT_RECOMMENDATIONS = {
   ],
 };
 
+const buildSimulatedForecast = (sensorReadings, riskLevel, detectedIssue) => {
+  const coolant = normalizedReading(sensorReadings, ['COOLANT_TEMPERATURE', 'engine_coolant_temperaturec']);
+  const rpm = normalizedReading(sensorReadings, ['ENGINE_RPM', 'engine_rpmrpm']);
+  const voltage = normalizedReading(sensorReadings, ['CONTROL_MODULE_VOLTAGE', 'voltage'], 12.6);
+  const shortFuelTrim = normalizedReading(sensorReadings, ['SHORT_TERM_FUEL_TRIM_BANK_1']);
+  const longFuelTrim = normalizedReading(sensorReadings, ['LONG_TERM_FUEL_TRIM_BANK_1']);
+  const engineLoad = normalizedReading(sensorReadings, ['ENGINE_LOAD']);
+
+  if (riskLevel === 'critical') {
+    return {
+      predictedIssue: `${detectedIssue || 'Current fault'} may cause service interruption soon`,
+      predictionHorizon: 'Immediate to 7 days',
+      predictionReason: 'Critical live readings indicate a high near-term failure risk if the vehicle keeps operating without repair.',
+    };
+  }
+
+  if (coolant >= 98 || engineLoad >= 70) {
+    return {
+      predictedIssue: 'Cooling system stress or overheating risk',
+      predictionHorizon: '7 to 14 days',
+      predictionReason: `Coolant temperature (${coolant} C) and engine load (${engineLoad}%) suggest rising thermal stress under repeated trips.`,
+    };
+  }
+
+  if (voltage > 0 && voltage < 12.6) {
+    return {
+      predictedIssue: 'Weak battery or charging-system degradation',
+      predictionHorizon: '1 to 3 weeks',
+      predictionReason: `Control module voltage (${voltage} V) is below the normal running range, so starting or charging issues may develop.`,
+    };
+  }
+
+  if (shortFuelTrim >= 10 || longFuelTrim >= 7) {
+    return {
+      predictedIssue: 'Fuel mixture imbalance may trigger emissions or oxygen-sensor faults',
+      predictionHorizon: '2 to 4 weeks',
+      predictionReason: `Fuel trims (${shortFuelTrim}% short-term, ${longFuelTrim}% long-term) show the ECU correcting mixture beyond normal limits.`,
+    };
+  }
+
+  if (rpm >= 3000 && engineLoad >= 50) {
+    return {
+      predictedIssue: 'Drivetrain wear risk under repeated high-load operation',
+      predictionHorizon: '1 to 2 months',
+      predictionReason: `RPM (${rpm}) and engine load (${engineLoad}%) indicate repeated strain that should be monitored.`,
+    };
+  }
+
+  return {
+    predictedIssue: riskLevel === 'healthy'
+      ? 'No near-term failure predicted'
+      : `${detectedIssue || 'Detected condition'} may worsen without maintenance`,
+    predictionHorizon: riskLevel === 'healthy' ? '30 to 60 days' : '2 to 4 weeks',
+    predictionReason: riskLevel === 'healthy'
+      ? 'Submitted OBD values are within safe operating ranges; continue routine maintenance and rescan after long trips.'
+      : 'Current warning-level readings do not show immediate failure, but trend-based simulation recommends follow-up service.',
+  };
+};
+
 const buildRuleBasedPrediction = (sensorReadings, faultCodes, mlError) => {
   const coolant = normalizedReading(sensorReadings, ['COOLANT_TEMPERATURE', 'engine_coolant_temperaturec']);
   const rpm = normalizedReading(sensorReadings, ['ENGINE_RPM', 'engine_rpmrpm']);
@@ -172,6 +231,7 @@ const buildRuleBasedPrediction = (sensorReadings, faultCodes, mlError) => {
 
   const fault = detected[0] ?? null;
   const riskLevel = fault ? (FAULT_SEVERITY_MAP[fault] ?? 'warning') : 'healthy';
+  const forecast = buildSimulatedForecast(sensorReadings, riskLevel, fault);
   const recommendations = fault
     ? [
         ...(FAULT_RECOMMENDATIONS[fault] ?? []),
@@ -187,6 +247,8 @@ const buildRuleBasedPrediction = (sensorReadings, faultCodes, mlError) => {
     aiPrediction: {
       hasFault: Boolean(fault),
       issue: summary,
+      detectedIssue: summary,
+      ...forecast,
       confidence: riskLevel === 'critical' ? 0.72 : riskLevel === 'warning' ? 0.6 : 0.5,
       urgency: riskLevel,
       explanation: `Rule-based assessment: coolant ${coolant} C, RPM ${rpm}, speed ${speed} km/h, voltage ${voltage} V, short fuel trim ${shortFuelTrim}%, long fuel trim ${longFuelTrim}%, lambda ${lambda}.`,
@@ -235,7 +297,10 @@ const escapeHtml = (value = '') =>
 const buildReportText = (diagnostic) => {
   const ai = diagnostic.aiPrediction || {};
   const lines = [
-    `Prediction: ${ai.issue || diagnostic.summary}`,
+    `Detection: ${ai.detectedIssue || diagnostic.summary}`,
+    `Prediction: ${ai.predictedIssue || ai.issue || diagnostic.summary}`,
+    ai.predictionHorizon ? `Prediction horizon: ${ai.predictionHorizon}` : '',
+    ai.predictionReason ? `Prediction reason: ${ai.predictionReason}` : '',
     `Status: ${riskStatusLabel(diagnostic.riskLevel)}`,
     `Confidence: ${Math.round((Number(ai.confidence) || 0) * 100)}%`,
     `Health score: ${diagnostic.health}%`,
@@ -294,7 +359,9 @@ const notifyDiagnosticReady = async ({ diagnostic, ownerId, vehicle }) => {
         <p>Hello ${escapeHtml(driver.name || 'Driver')},</p>
         <p>Your AI diagnostic report for ${escapeHtml(vehicleName)} is ready.</p>
         <p><strong>Status:</strong> ${escapeHtml(riskLabel)}</p>
-        <p><strong>Prediction:</strong> ${escapeHtml(diagnostic.aiPrediction?.issue || diagnostic.summary)}</p>
+        <p><strong>Detection:</strong> ${escapeHtml(diagnostic.aiPrediction?.detectedIssue || diagnostic.summary)}</p>
+        <p><strong>Prediction:</strong> ${escapeHtml(diagnostic.aiPrediction?.predictedIssue || diagnostic.aiPrediction?.issue || diagnostic.summary)}</p>
+        <p><strong>Prediction horizon:</strong> ${escapeHtml(diagnostic.aiPrediction?.predictionHorizon || 'Not available')}</p>
         <p><strong>Confidence:</strong> ${Math.round((Number(diagnostic.aiPrediction?.confidence) || 0) * 100)}%</p>
         <pre style="white-space:pre-wrap;background:#f3f4f6;border-radius:8px;padding:12px">${escapeHtml(reportText)}</pre>
         ${
@@ -537,6 +604,11 @@ const createDiagnostic = async ({
   let errorMessage = '';
   try {
     const prediction = await predictWithMlModel(readings);
+    const forecast = buildSimulatedForecast(
+      readings,
+      prediction.risk_level,
+      prediction.predicted_failure,
+    );
     const health =
       prediction.risk_level === 'healthy'
         ? 96
@@ -551,11 +623,13 @@ const createDiagnostic = async ({
       aiPrediction: {
         hasFault: prediction.risk_level !== 'healthy',
         issue: prediction.predicted_failure,
+        detectedIssue: prediction.predicted_failure,
+        ...forecast,
         confidence: prediction.confidence,
         urgency: prediction.risk_level,
-        explanation: `AI analyzed the submitted OBD readings.`,
+        explanation: `Detection: ${prediction.predicted_failure}. Prediction: ${forecast.predictedIssue} within ${forecast.predictionHorizon}.`,
         recommendation: prediction.recommendations.join(' '),
-        technicalNote: `Model source: ${prediction.model_source || 'ml_service'}`,
+        technicalNote: `Model source: ${prediction.model_source || 'ml_service'}; prediction forecast is simulated from OBD trend rules.`,
         estimatedRepair: prediction.predicted_failure,
         modelSource: prediction.model_source || 'ml_service',
       },
