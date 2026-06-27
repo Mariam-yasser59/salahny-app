@@ -437,7 +437,7 @@ class _WsReqDetailScreenState extends State<WsReqDetailScreen> {
             ),
           ),
           onOpenDiagnostics: () async {
-            await Navigator.push(
+            final result = await Navigator.push<String>(
               context,
               MaterialPageRoute(
                 builder: (_) =>
@@ -445,6 +445,18 @@ class _WsReqDetailScreenState extends State<WsReqDetailScreen> {
               ),
             );
             if (!mounted) return;
+            if (result == 'repair_in_progress') {
+              await _service.getBookings();
+              if (!mounted) return;
+              setState(() => _status = RequestStatus.repairInProgress);
+              return;
+            }
+            if (result == 'completed') {
+              await _service.getBookings();
+              if (!mounted) return;
+              setState(() => _status = RequestStatus.completed);
+              return;
+            }
             await _markDiagnosticsReady();
           },
           onStartRepair: _startRepair,

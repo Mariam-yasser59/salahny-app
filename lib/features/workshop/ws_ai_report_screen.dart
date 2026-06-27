@@ -5,6 +5,7 @@ import '../../core/errors/app_error_handler.dart';
 import '../../core/theme/app_theme.dart';
 import '../../features/driver/diagnostics/services/diagnostics_service.dart';
 import '../../shared/models/models.dart';
+import 'services/workshop_portal_service.dart';
 
 class WsAiReportScreen extends StatelessWidget {
   final String? linkedRequestId;
@@ -491,8 +492,10 @@ class _ActionFooter extends StatefulWidget {
 
 class _ActionFooterState extends State<_ActionFooter> {
   final _diagnosticsService = DiagnosticsService();
+  final _portalService = WorkshopPortalService();
   bool _creatingRepairTask = false;
   bool _sendingToDriver = false;
+  bool _completingJob = false;
 
   String get _linkedBookingId =>
       widget.linkedRequestId ?? widget.report.bookingId ?? '';
@@ -508,6 +511,7 @@ class _ActionFooterState extends State<_ActionFooter> {
     setState(() => _creatingRepairTask = true);
     final ok = await AppErrorHandler.guard<bool>(context, () async {
       await _diagnosticsService.createRepairTask(widget.report.id);
+      await _portalService.syncDashboard();
       return true;
     }, fallbackMessage: 'Could not create the repair task right now.');
     if (!mounted) return;
@@ -518,6 +522,7 @@ class _ActionFooterState extends State<_ActionFooter> {
       'Repair task created and added to the workshop dashboard',
       isError: false,
     );
+    Navigator.pop(context, 'repair_in_progress');
   }
 
   Future<void> _sendToDriver() async {
@@ -536,6 +541,26 @@ class _ActionFooterState extends State<_ActionFooter> {
     );
   }
 
+  Future<void> _completeJob() async {
+    if (_linkedBookingId.isEmpty) {
+      AppErrorHandler.showMessage(
+        context,
+        'No linked booking is available to complete.',
+      );
+      return;
+    }
+    setState(() => _completingJob = true);
+    final ok = await AppErrorHandler.guard<bool>(context, () async {
+      await _portalService.updateBookingStatus(_linkedBookingId, 'completed');
+      return true;
+    }, fallbackMessage: 'Could not complete this request right now.');
+    if (!mounted) return;
+    setState(() => _completingJob = false);
+    if (ok != true) return;
+    AppErrorHandler.showMessage(context, 'Request completed', isError: false);
+    Navigator.pop(context, 'completed');
+  }
+
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
@@ -550,7 +575,7 @@ class _ActionFooterState extends State<_ActionFooter> {
           WsBtn(
             label: _creatingRepairTask ? 'Creating...' : 'Create Repair Task',
             icon: Icons.build_rounded,
-            onTap: _creatingRepairTask || _sendingToDriver
+            onTap: _creatingRepairTask || _sendingToDriver || _completingJob
                 ? () {}
                 : _createRepairTask,
           ),
@@ -562,7 +587,8 @@ class _ActionFooterState extends State<_ActionFooter> {
                   label: _sendingToDriver ? 'Sending...' : 'Send to Driver',
                   icon: Icons.send_rounded,
                   outline: true,
-                  onTap: _creatingRepairTask || _sendingToDriver
+                  onTap:
+                      _creatingRepairTask || _sendingToDriver || _completingJob
                       ? () {}
                       : _sendToDriver,
                 ),
@@ -570,10 +596,13 @@ class _ActionFooterState extends State<_ActionFooter> {
               const SizedBox(width: 12),
               Expanded(
                 child: WsBtn(
-                  label: 'Done',
+                  label: _completingJob ? 'Completing...' : 'Done',
                   icon: Icons.check_rounded,
                   gold: true,
-                  onTap: () => Navigator.pop(context),
+                  onTap:
+                      _creatingRepairTask || _sendingToDriver || _completingJob
+                      ? () {}
+                      : _completeJob,
                 ),
               ),
             ],
