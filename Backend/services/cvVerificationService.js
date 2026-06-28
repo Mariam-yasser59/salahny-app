@@ -276,6 +276,89 @@ const validateRole = ({ role, documentType }) => {
   return '';
 };
 
+const clampScore = (value, min = 0, max = 0.99) =>
+  Math.min(max, Math.max(min, Number.isFinite(Number(value)) ? Number(value) : 0));
+
+const usefulFieldKeys = (fields = {}) =>
+  Object.entries(fields)
+    .filter(([, value]) => value !== null && value !== undefined && value !== '' && !Array.isArray(value))
+    .map(([key]) => key);
+
+const requiredFieldGroups = {
+  DRIVING_LICENSE: ['licenseNumber', 'fullName', 'expirationDate', 'nationality'],
+  COMMERCIAL_REGISTER: ['registrationNumber', 'companyName', 'activityType', 'address'],
+  TAX_CARD: ['taxNumber', 'businessName', 'activityType', 'issueDate'],
+};
+
+const hasCriticalField = (documentType, fields = {}) => {
+  const keys = new Set(usefulFieldKeys(fields));
+  const required = requiredFieldGroups[documentType] ?? [];
+  if (!required.length) return false;
+  return required.slice(0, 2).some((field) => keys.has(field));
+};
+
+const issuePenalty = (issues = []) =>
+  clampScore(
+    issues.reduce((total, issue) => {
+      const item = normalize(issue);
+      if (['synthetic', 'test/unofficial', 'not official', 'generated'].some((term) => item.includes(term))) return total + 0.65;
+      if (['could not read', 'unreadable', 'too small', 'empty'].some((term) => item.includes(term))) return total + 0.35;
+      if (['could not be detected', 'accepts only'].some((term) => item.includes(term))) return total + 0.28;
+      if (['expired', 'unclear', 'low', 'glare', 'blur'].some((term) => item.includes(term))) return total + 0.12;
+      return total + 0.04;
+    }, 0),
+    0,
+    0.75,
+  );
+
+const buildProfessionalScore = ({
+  detectedDocumentType,
+  role,
+  extractedText,
+  extractedFields,
+  matchedKeywords,
+  ocrConfidence,
+  serviceConfidence,
+  fakeMarkers,
+  issues,
+}) => {
+  const allowed = (ROLE_ALLOWED_DOCUMENTS[role] ?? []).includes(detectedDocumentType);
+  const fieldKeys = usefulFieldKeys(extractedFields);
+  const criticalHits = fieldKeys.filter((field) => (requiredFieldGroups[detectedDocumentType] ?? []).includes(field));
+
+  const ocrScore = clampScore(ocrConfidence, 0, 1) * 0.32;
+  const serviceScore = clampScore(serviceConfidence, 0, 1) * 0.10;
+  const typeScore = detectedDocumentType !== 'UNKNOWN' ? 0.16 : 0;
+  const roleScore = allowed ? 0.12 : 0;
+  const keywordScore = Math.min(0.16, (matchedKeywords?.length ?? 0) * 0.05);
+  const fieldsScore = Math.min(0.26, fieldKeys.length * 0.03 + criticalHits.length * 0.055);
+  const textScore = Math.min(0.07, (extractedText?.trim?.().length ?? 0) / 2600);
+  const penalty = issuePenalty(issues);
+
+  let score = 0.08 + ocrScore + serviceScore + typeScore + roleScore + keywordScore + fieldsScore + textScore - penalty;
+  score = clampScore(score);
+
+  if (fakeMarkers.length) score = Math.min(score, 0.24);
+  if (!extractedText.trim()) score = Math.min(score, 0.18);
+  if (detectedDocumentType === 'UNKNOWN') score = Math.min(score, 0.49);
+  if (!allowed && detectedDocumentType !== 'UNKNOWN') score = Math.min(score, 0.42);
+
+  return {
+    confidence: Number(score.toFixed(2)),
+    breakdown: {
+      ocr: Number(ocrScore.toFixed(3)),
+      service: Number(serviceScore.toFixed(3)),
+      documentType: Number(typeScore.toFixed(3)),
+      roleMatch: Number(roleScore.toFixed(3)),
+      keywords: Number(keywordScore.toFixed(3)),
+      fields: Number(fieldsScore.toFixed(3)),
+      textLength: Number(textScore.toFixed(3)),
+      penalty: Number(penalty.toFixed(3)),
+      criticalFields: criticalHits,
+    },
+  };
+};
+
 export const verifyDocumentWithCv = async ({ file, role, documentType }) => {
   const issues = [];
   const size = file.size ?? file.buffer?.length ?? 0;
@@ -336,15 +419,9 @@ export const verifyDocumentWithCv = async ({ file, role, documentType }) => {
 
   const ocrConfidence = Number(cv.payload?.ocrConfidence);
   const fakeMarkers = fakeMarkerHits(extractedText);
-  let confidence = Math.max(
-    classificationFromOcr.confidence,
-    Number(cv.payload?.confidence) || 0,
-    Number.isFinite(ocrConfidence) ? ocrConfidence : 0,
-  );
 
   if (fakeMarkers.length) {
     issues.push(`Synthetic/test/unofficial document detected: ${fakeMarkers.slice(0, 5).join(', ')}`);
-    confidence = Math.min(confidence, 0.25);
   }
 
   const roleRejectionReason = validateRole({
@@ -353,6 +430,25 @@ export const verifyDocumentWithCv = async ({ file, role, documentType }) => {
   });
   if (roleRejectionReason) issues.push(roleRejectionReason);
   if (!extractedText.trim()) issues.push('OCR could not read text from this document');
+
+  const preliminaryFields = compactObject({
+    ...extractStructuredFields(detectedDocumentType, extractedText),
+    ...(cv.payload?.extractedFields ?? {}),
+  });
+
+  const professionalScore = buildProfessionalScore({
+    detectedDocumentType: fakeMarkers.length ? 'UNKNOWN' : detectedDocumentType,
+    role,
+    extractedText,
+    extractedFields: preliminaryFields,
+    matchedKeywords: classificationFromOcr.matchedKeywords,
+    ocrConfidence: Number.isFinite(ocrConfidence) ? ocrConfidence : 0,
+    serviceConfidence: Number(cv.payload?.confidence) || classificationFromOcr.confidence,
+    fakeMarkers,
+    issues,
+  });
+
+  let confidence = professionalScore.confidence;
   if (confidence < 0.45) issues.push('OCR confidence is too low for automatic verification');
 
   const qualityStatus =
@@ -360,9 +456,11 @@ export const verifyDocumentWithCv = async ({ file, role, documentType }) => {
       ? 'unsupported'
       : !extractedText.trim() || issues.some((item) => item.toLowerCase().includes('empty'))
         ? 'unreadable'
-        : confidence >= 0.65
-          ? 'good'
-          : 'poor';
+        : confidence >= 0.82
+          ? 'excellent'
+          : confidence >= 0.55
+            ? 'good'
+            : 'poor';
 
   let status = 'needs_admin_review';
   let isValid = false;
@@ -373,14 +471,16 @@ export const verifyDocumentWithCv = async ({ file, role, documentType }) => {
   } else if (roleRejectionReason || qualityStatus === 'unsupported' || qualityStatus === 'unreadable') {
     status = 'ai_rejected';
     rejectionReason = roleRejectionReason || 'Document is unreadable or empty';
-  } else if (confidence >= 0.75 && detectedDocumentType !== 'UNKNOWN') {
+  } else if (confidence >= 0.82 && detectedDocumentType !== 'UNKNOWN' && hasCriticalField(detectedDocumentType, preliminaryFields)) {
     status = 'ai_verified';
     isValid = true;
+  } else if (confidence < 0.45) {
+    status = 'ai_rejected';
+    rejectionReason = 'Document quality is too low for verification';
   }
 
   const extractedFields = compactObject({
-    ...extractStructuredFields(detectedDocumentType, extractedText),
-    ...(cv.payload?.extractedFields ?? {}),
+    ...preliminaryFields,
     ...(Array.isArray(cv.payload?.matchedKeywords) ? { serviceMatchedKeywords: cv.payload.matchedKeywords } : {}),
     declaredKind: documentType,
     detectedDocumentType: fakeMarkers.length ? 'UNKNOWN' : detectedDocumentType,
@@ -388,6 +488,7 @@ export const verifyDocumentWithCv = async ({ file, role, documentType }) => {
     fakeMarkers,
     verifier: cv.verifier,
     cvServiceUrl: cv.cvServiceUrl,
+    scoreBreakdown: professionalScore.breakdown,
   });
 
   return {
@@ -401,6 +502,7 @@ export const verifyDocumentWithCv = async ({ file, role, documentType }) => {
     extractedText,
     extractedFields,
     qualityStatus,
+    scoreBreakdown: professionalScore.breakdown,
     rejectionReason,
     issues: unique(issues),
     status,

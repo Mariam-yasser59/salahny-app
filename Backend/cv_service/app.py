@@ -292,6 +292,105 @@ def _merge_fields(*sources):
     return merged
 
 
+def _clamp_score(value, low=0.0, high=0.99):
+    return max(low, min(high, float(value)))
+
+
+def _field_strength(document_type, fields):
+    """Score how much useful structured data was extracted from the document."""
+    if not fields:
+        return 0.0, []
+
+    normalized_fields = {key: value for key, value in fields.items() if value not in (None, "", [], {})}
+    present = set(normalized_fields.keys())
+    reasons = []
+    score = min(0.14, len(present) * 0.035)
+
+    critical_fields = {
+        "DRIVING_LICENSE": ["licenseNumber", "fullName", "expirationDate"],
+        "COMMERCIAL_REGISTER": ["registrationNumber", "companyName", "activityType", "address"],
+        "TAX_CARD": ["taxNumber", "businessName", "activityType", "issueDate"],
+    }.get(document_type, [])
+
+    critical_hits = [field for field in critical_fields if field in present]
+    score += min(0.14, len(critical_hits) * 0.055)
+    if critical_hits:
+        reasons.append("critical fields found: " + ", ".join(critical_hits))
+
+    return _clamp_score(score, 0, 0.26), reasons
+
+
+def _issue_penalty(issues):
+    penalty = 0.0
+    for issue in issues:
+        normalized = _normalize(issue)
+        if any(marker in normalized for marker in ["synthetic", "test/unofficial", "not official", "generated"]):
+            penalty += 0.65
+        elif any(marker in normalized for marker in ["could not read", "unreadable", "too small", "empty"]):
+            penalty += 0.35
+        elif any(marker in normalized for marker in ["could not be detected", "accepts only"]):
+            penalty += 0.28
+        elif any(marker in normalized for marker in ["expired", "unclear", "low", "glare", "blur"]):
+            penalty += 0.12
+        else:
+            penalty += 0.04
+    return _clamp_score(penalty, 0, 0.75)
+
+
+def _professional_score(*, document_type, role, text, fields, matched_keywords, ocr_confidence, fake_markers, issues):
+    """Dynamic verification score instead of fixed 75%/25% buckets."""
+    text = text or ""
+    try:
+        ocr = _clamp_score(float(ocr_confidence), 0, 1)
+    except (TypeError, ValueError):
+        ocr = 0.0
+
+    allowed = document_type in ROLE_ALLOWED_DOCUMENTS.get(role, set())
+    field_score, field_reasons = _field_strength(document_type, fields)
+    keyword_score = min(0.18, len(matched_keywords or []) * 0.055)
+    text_score = min(0.08, len(text.strip()) / 2500)
+    type_score = 0.18 if document_type != "UNKNOWN" else 0.0
+    role_score = 0.12 if allowed else 0.0
+    ocr_score = ocr * 0.34
+    penalty = _issue_penalty(issues)
+
+    score = 0.08 + ocr_score + type_score + role_score + keyword_score + field_score + text_score - penalty
+    score = _clamp_score(score)
+
+    if fake_markers:
+        score = min(score, 0.24)
+    if not text.strip():
+        score = min(score, 0.18)
+    if document_type == "UNKNOWN":
+        score = min(score, 0.49)
+    if not allowed and document_type != "UNKNOWN":
+        score = min(score, 0.42)
+
+    breakdown = {
+        "ocr": round(ocr_score, 3),
+        "documentType": round(type_score, 3),
+        "roleMatch": round(role_score, 3),
+        "keywords": round(keyword_score, 3),
+        "fields": round(field_score, 3),
+        "textLength": round(text_score, 3),
+        "penalty": round(penalty, 3),
+        "fieldReasons": field_reasons,
+    }
+    return round(score, 2), breakdown
+
+
+def _critical_fields_found(document_type, fields):
+    field_set = set((fields or {}).keys())
+    required = {
+        "DRIVING_LICENSE": {"licenseNumber", "fullName"},
+        "COMMERCIAL_REGISTER": {"registrationNumber", "companyName"},
+        "TAX_CARD": {"taxNumber", "businessName"},
+    }.get(document_type, set())
+    if not required:
+        return False
+    return len(field_set.intersection(required)) >= 1
+
+
 @app.post("/verify-document")
 def verify_document():
     uploaded = request.files.get("file")
@@ -356,34 +455,42 @@ def verify_document():
             else "Driver verification accepts only Driving License documents"
         )
 
-    confidence = max(keyword_confidence, ocr_confidence)
-    if fields:
-        confidence = max(confidence, min(0.96, 0.45 + len(fields) * 0.12 + len(matched_keywords) * 0.08))
-    confidence = min(0.99, max(0.0, confidence))
+    confidence, score_breakdown = _professional_score(
+        document_type=detected_type,
+        role=role,
+        text=text,
+        fields=fields,
+        matched_keywords=matched_keywords,
+        ocr_confidence=ocr_confidence,
+        fake_markers=fake_markers,
+        issues=issues,
+    )
 
-    blocking_issue = any(
+    blocking_reject = any(
         phrase in issue.lower()
         for issue in issues
         for phrase in [
-            "unreadable",
-            "could not read",
-            "could not be detected",
-            "accepts only",
-            "too small",
             "synthetic",
             "test/unofficial",
             "not official",
+            "too small",
+            "empty",
         ]
     )
+    hard_mismatch = any("accepts only" in issue.lower() for issue in issues)
+    unreadable = not text.strip() or any("could not read" in issue.lower() for issue in issues)
 
-    if blocking_issue:
-        status = "ai_rejected" if not text or detected_type == "UNKNOWN" else "needs_admin_review"
+    if blocking_reject or unreadable or hard_mismatch:
+        status = "ai_rejected"
         is_valid = False
-    elif confidence >= 0.75:
+    elif confidence >= 0.82 and detected_type != "UNKNOWN" and _critical_fields_found(detected_type, fields):
         status = "ai_verified"
         is_valid = True
-    else:
+    elif confidence >= 0.45:
         status = "needs_admin_review"
+        is_valid = False
+    else:
+        status = "ai_rejected"
         is_valid = False
 
     return jsonify(
@@ -397,6 +504,7 @@ def verify_document():
             "extractedText": text,
             "extractedFields": fields,
             "matchedKeywords": matched_keywords,
+            "scoreBreakdown": score_breakdown,
             "issues": sorted(set(issues)),
             "status": status,
             "verifier": verifier,
