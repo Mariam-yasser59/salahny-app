@@ -1031,7 +1031,7 @@ class AppCache {
       actor: 'Super Admin',
       action: 'Service added',
       target: service.name,
-      details: 'New service added at \$${service.price.toStringAsFixed(0)}.',
+      details: 'New service added at EGP ${service.price.toStringAsFixed(0)}.',
     );
   }
 

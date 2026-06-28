@@ -139,7 +139,7 @@ class SuperAdminDashboardView extends StatelessWidget {
                 ),
                 AdminKpiCard(
                   label: 'Revenue',
-                  value: '\$$revenue',
+                  value: 'EGP $revenue',
                   icon: Icons.paid_rounded,
                   color: AC.red,
                   delta: 'Live gross',
@@ -215,7 +215,7 @@ class SuperAdminDashboardView extends StatelessWidget {
                         padding: const EdgeInsets.only(bottom: 8),
                         child: InfoRow(
                           label: item.name,
-                          value: '\$${item.revenue.toStringAsFixed(0)}',
+                          value: 'EGP ${item.revenue.toStringAsFixed(0)}',
                         ),
                       ),
                     ),

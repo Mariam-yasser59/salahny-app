@@ -65,7 +65,7 @@ class _PackagesManagementScreenState extends State<PackagesManagementScreen> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  '\$${pkg.price.toStringAsFixed(0)} • ${pkg.duration}',
+                  'EGP ${pkg.price.toStringAsFixed(0)} • ${pkg.duration}',
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,

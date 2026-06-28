@@ -193,7 +193,7 @@ class _DriversManagementViewState extends State<DriversManagementView> {
           const SizedBox(height: 10),
           InfoRow(
             label: 'Wallet',
-            value: '\$${driver.walletBalance.toStringAsFixed(0)}',
+            value: 'EGP ${driver.walletBalance.toStringAsFixed(0)}',
           ),
           const SizedBox(height: 10),
           InfoRow(label: 'Status', value: driver.status.label),

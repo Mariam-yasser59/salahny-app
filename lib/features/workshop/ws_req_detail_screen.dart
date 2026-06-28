@@ -180,7 +180,7 @@ class _WsReqDetailScreenState extends State<WsReqDetailScreen> {
                     const SizedBox(height: 10),
                     WsInfoRow(
                       label: 'Total',
-                      value: '\$${widget.booking.price.toInt()}',
+                      value: 'EGP ${widget.booking.price.toInt()}',
                       bold: true,
                     ),
                   ],

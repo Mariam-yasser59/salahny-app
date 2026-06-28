@@ -156,7 +156,7 @@ class _BookingSuccessTrackingScreenState
                         ),
                       ),
                     ),
-                    GoldBadge('\$${booking.price.toStringAsFixed(2)}'),
+                    GoldBadge('EGP ${booking.price.toStringAsFixed(2)}'),
                   ],
                 ),
                 const SizedBox(height: 14),

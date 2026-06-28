@@ -717,7 +717,7 @@ class _ActiveBookingCard extends StatelessWidget {
               _Chip(Icons.access_time_rounded, b.time),
               const Spacer(),
               Text(
-                '\$${b.price.toInt()}',
+                'EGP ${b.price.toInt()}',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -1079,7 +1079,7 @@ class _ServiceCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '\$${svc.price.toInt()}',
+                'EGP ${svc.price.toInt()}',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -1562,7 +1562,7 @@ class _BookingTile extends StatelessWidget {
             _Chip2(Icons.access_time_rounded, b.time),
             const Spacer(),
             Text(
-              '\$${b.price.toInt()}',
+              'EGP ${b.price.toInt()}',
               style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
@@ -1684,7 +1684,7 @@ class _ProfileTab extends StatelessWidget {
                     _StatPill('${user.rating}', 'Rating', AC.gold),
                     const SizedBox(width: 10),
                     _StatPill(
-                      '\$${user.walletBalance.toInt()}',
+                      'EGP ${user.walletBalance.toInt()}',
                       'Wallet',
                       AC.success,
                     ),

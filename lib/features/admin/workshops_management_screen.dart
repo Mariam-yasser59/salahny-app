@@ -258,7 +258,7 @@ class _WorkshopsManagementScreenState extends State<WorkshopsManagementScreen> {
             ),
             const SizedBox(height: 10),
           ],
-          InfoRow(label: 'Revenue', value: '\$${workshop.revenue.toInt()}'),
+          InfoRow(label: 'Revenue', value: 'EGP ${workshop.revenue.toInt()}'),
           const SizedBox(height: 10),
           InfoRow(label: 'Status', value: workshop.status.label),
         ],

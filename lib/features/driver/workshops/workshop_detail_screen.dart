@@ -264,7 +264,7 @@ class WorkshopDetailScreen extends StatelessWidget {
                                   ),
                                 ),
                                 Text(
-                                  '\$${s.price.toInt()}',
+                                  'EGP ${s.price.toInt()}',
                                   style: const TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w800,

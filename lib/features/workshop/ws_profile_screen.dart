@@ -424,7 +424,7 @@ class _WsProfileScreenState extends State<WsProfileScreen> {
                                   ),
                                 ),
                                 Text(
-                                  '\$${s.price.toInt()}',
+                                  'EGP ${s.price.toInt()}',
                                   style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w800,

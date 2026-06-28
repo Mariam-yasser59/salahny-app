@@ -497,7 +497,7 @@ class _TrackingRouteScreenState extends State<_TrackingRouteScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Total: \$${booking.price.toStringAsFixed(2)}',
+              'Total: EGP ${booking.price.toStringAsFixed(2)}',
               style: const TextStyle(color: Colors.white, fontSize: 16),
             ),
             const SizedBox(height: 12),

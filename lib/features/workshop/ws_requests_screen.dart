@@ -294,7 +294,7 @@ class _ReqCard extends StatelessWidget {
               ),
             ),
             Text(
-              '\$${booking.price.toInt()}',
+              'EGP ${booking.price.toInt()}',
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,

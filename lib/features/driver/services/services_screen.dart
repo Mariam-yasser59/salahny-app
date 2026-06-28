@@ -169,7 +169,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              '\$${s.price.toInt()}',
+                              'EGP ${s.price.toInt()}',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,

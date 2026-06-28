@@ -71,7 +71,7 @@ class _WsEarningsScreenState extends State<WsEarningsScreen> {
                         style: TextStyle(color: AC.t3),
                       ),
                       Text(
-                        '\$${_total.toStringAsFixed(0)}',
+                        'EGP ${_total.toStringAsFixed(0)}',
                         style: const TextStyle(
                           color: AC.gold,
                           fontSize: 36,
@@ -79,7 +79,7 @@ class _WsEarningsScreenState extends State<WsEarningsScreen> {
                         ),
                       ),
                       Text(
-                        'Available balance: \$${_available.toStringAsFixed(0)}',
+                        'Available balance: EGP ${_available.toStringAsFixed(0)}',
                         style: const TextStyle(color: AC.t2),
                       ),
                     ],
@@ -113,7 +113,7 @@ class _WsEarningsScreenState extends State<WsEarningsScreen> {
                             ),
                           ),
                           Text(
-                            '\$${item.amount.toStringAsFixed(0)}',
+                            'EGP ${item.amount.toStringAsFixed(0)}',
                             style: const TextStyle(
                               color: AC.gold,
                               fontWeight: FontWeight.w800,

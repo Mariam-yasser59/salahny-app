@@ -41,7 +41,7 @@ export const createService = asyncHandler(async (req, res) => {
     actorRole: req.user.role,
     action: 'Service created',
     target: service.name,
-    details: `Service created at \$${service.price}.`,
+    details: `Service created at EGP ${service.price}.`,
   });
   res.status(201).json({ success: true, data: service });
 });
@@ -87,7 +87,7 @@ export const createPackage = asyncHandler(async (req, res) => {
     actorRole: req.user.role,
     action: 'Package created',
     target: pkg.name,
-    details: `Package created at \$${pkg.price}.`,
+    details: `Package created at EGP ${pkg.price}.`,
   });
   res.status(201).json({ success: true, data: pkg });
 });

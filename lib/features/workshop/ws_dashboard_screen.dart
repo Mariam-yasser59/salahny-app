@@ -228,7 +228,7 @@ class _DashboardTab extends StatelessWidget {
                                 const SizedBox(width: 10),
                                 _QuickStat('${pending.length}', 'Pending'),
                                 const SizedBox(width: 10),
-                                _QuickStat('\$$revenue', 'Revenue'),
+                                _QuickStat('EGP $revenue', 'Revenue'),
                               ],
                             ),
                           ],
@@ -286,7 +286,7 @@ class _DashboardTab extends StatelessWidget {
                               ),
                               WsStatTile(
                                 label: 'Revenue',
-                                value: '\$$revenue',
+                                value: 'EGP $revenue',
                                 icon: Icons.payments_rounded,
                                 color: AC.gold,
                               ),
@@ -535,7 +535,7 @@ class _DashJobRow extends StatelessWidget {
               ),
             ),
             Text(
-              '\$${b.price.toInt()}',
+              'EGP ${b.price.toInt()}',
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,

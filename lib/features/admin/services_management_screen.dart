@@ -91,7 +91,7 @@ class _ServicesManagementScreenState extends State<ServicesManagementScreen> {
                 Row(
                   children: [
                     Text(
-                      '\$${service.price.toStringAsFixed(0)}',
+                      'EGP ${service.price.toStringAsFixed(0)}',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,

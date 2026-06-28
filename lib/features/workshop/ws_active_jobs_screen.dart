@@ -250,7 +250,7 @@ class _JobCard extends StatelessWidget {
                 ),
               ),
               Text(
-                '\$${b.price.toInt()}',
+                'EGP ${b.price.toInt()}',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,

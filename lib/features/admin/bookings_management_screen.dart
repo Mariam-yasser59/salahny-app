@@ -96,7 +96,7 @@ class _BookingsManagementViewState extends State<BookingsManagementView> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Payment: ${booking.paymentMethod} • \$${booking.total.toStringAsFixed(0)}',
+                      'Payment: ${booking.paymentMethod} • EGP ${booking.total.toStringAsFixed(0)}',
                       style: const TextStyle(fontSize: 12, color: AC.t3),
                     ),
                     const SizedBox(height: 14),

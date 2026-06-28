@@ -51,7 +51,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Row(children:[
             _SP('${u.totalBookings}','Bookings',AC.info),const SizedBox(width:10),
             _SP('${u.rating}','Rating',AC.gold),const SizedBox(width:10),
-            _SP('\$${u.walletBalance.toInt()}','Wallet',AC.success),
+            _SP('EGP ${u.walletBalance.toInt()}','Wallet',AC.success),
           ]),
         ])).animate().fadeIn(duration:400.ms),
         const SizedBox(height:24),

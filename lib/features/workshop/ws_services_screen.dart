@@ -157,7 +157,7 @@ class _ServiceCard extends StatelessWidget {
               ]),
             ]),
           ),
-          Text('\$${service.price.toInt()}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AC.gold)),
+          Text('EGP ${service.price.toInt()}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AC.gold)),
           const SizedBox(width: 10),
           PopupMenuButton<String>(
             onSelected: (v) {
@@ -223,7 +223,7 @@ class _AddServiceSheetState extends State<_AddServiceSheet> {
           _SField(ctrl: _nameCtrl, hint: 'Service name', icon: Icons.build_rounded),
           const SizedBox(height: 10),
           Row(children: [
-            Expanded(child: _SField(ctrl: _priceCtrl, hint: 'Price (\$)', icon: Icons.attach_money_rounded, number: true)),
+            Expanded(child: _SField(ctrl: _priceCtrl, hint: 'Price (EGP)', icon: Icons.attach_money_rounded, number: true)),
             const SizedBox(width: 10),
             Expanded(child: _SField(ctrl: _durCtrl, hint: 'Duration (min)', icon: Icons.schedule_rounded, number: true)),
           ]),

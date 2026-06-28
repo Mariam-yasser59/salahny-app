@@ -570,7 +570,7 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
                   ),
                   const Spacer(),
                   Text(
-                    '\$${service.price.toStringAsFixed(0)}',
+                    'EGP ${service.price.toStringAsFixed(0)}',
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
