@@ -58,6 +58,36 @@ ROLE_ALLOWED_DOCUMENTS = {
     "workshop": {"COMMERCIAL_REGISTER"},
 }
 
+SUSPICIOUS_FAKE_MARKERS = [
+    "test document",
+    "not official",
+    "generic test card",
+    "for testing purposes only",
+    "sample document",
+    "mock document",
+    "placeholder",
+    "testland",
+    "chatgpt",
+    "openai",
+    "dall-e",
+    "dalle",
+    "digitalSourceType",
+    "digital source type",
+    "trainedAlgo",
+    "trained algorithm",
+    "ai generated",
+    "generated image",
+    "synthetic",
+]
+
+def _fake_markers(text):
+    normalized = _normalize(text)
+    hits = []
+    for marker in SUSPICIOUS_FAKE_MARKERS:
+        if _normalize(marker) in normalized:
+            hits.append(marker)
+    return hits
+
 
 def _normalize(value=""):
     return (
@@ -138,7 +168,11 @@ Required JSON keys:
 - ocrConfidence: number from 0 to 1 based on readability.
 - extractedFields: object with any detected fields such as fullName, licenseNumber,
   expirationDate, companyName, registrationNumber, taxNumber, address, activityType.
-- issues: array of short issues if the document is unclear, mismatched, expired, or unreadable.
+- issues: array of short issues if the document is unclear, mismatched, expired, unofficial, synthetic, test/mock, or unreadable.
+
+Hard rejection rules:
+- If the document says TEST DOCUMENT, NOT OFFICIAL, Generic Test Card, For Testing Purposes Only, Sample, Mock, Placeholder, Testland, ChatGPT, OpenAI, AI-generated, DALL-E, trainedAlgo, digitalSourceType, or any similar synthetic/test marker, set documentType to UNKNOWN, ocrConfidence <= 0.25, and add an issue: "Synthetic/test/unofficial document detected".
+- Do not classify a generic card as DRIVING_LICENSE just because it contains the words "License Number". Look for official document context too, such as traffic authority wording, driving license title, government authority wording, or Arabic equivalents.
 """.strip()
 
     body = {
@@ -301,6 +335,14 @@ def verify_document():
 
     fields = _merge_fields(_extract_fields(text, detected_type, role), gemini_fields)
 
+    fake_markers = _fake_markers(text)
+    if fake_markers:
+        issues.append("Synthetic/test/unofficial document detected: " + ", ".join(fake_markers[:5]))
+        # A test/mock/unofficial/generated document must never be auto-verified.
+        detected_type = "UNKNOWN"
+        fields = {}
+        ocr_confidence = min(ocr_confidence, 0.25)
+
     if len(raw) < 1024:
         issues.append("Document file is too small or empty")
     if not text:
@@ -322,7 +364,16 @@ def verify_document():
     blocking_issue = any(
         phrase in issue.lower()
         for issue in issues
-        for phrase in ["unreadable", "could not read", "could not be detected", "accepts only", "too small"]
+        for phrase in [
+            "unreadable",
+            "could not read",
+            "could not be detected",
+            "accepts only",
+            "too small",
+            "synthetic",
+            "test/unofficial",
+            "not official",
+        ]
     )
 
     if blocking_issue:

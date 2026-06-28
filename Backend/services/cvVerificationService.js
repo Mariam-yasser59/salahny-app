@@ -69,6 +69,33 @@ const normalize = (value = '') =>
 
 const unique = (items) => [...new Set(items.filter(Boolean))];
 
+const SUSPICIOUS_FAKE_MARKERS = [
+  'test document',
+  'not official',
+  'generic test card',
+  'for testing purposes only',
+  'sample document',
+  'mock document',
+  'placeholder',
+  'testland',
+  'chatgpt',
+  'openai',
+  'dall-e',
+  'dalle',
+  'digitalsourcetype',
+  'digital source type',
+  'trainedalgo',
+  'trained algorithm',
+  'ai generated',
+  'generated image',
+  'synthetic',
+];
+
+const fakeMarkerHits = (text = '') => {
+  const normalizedText = normalize(text);
+  return SUSPICIOUS_FAKE_MARKERS.filter((marker) => normalizedText.includes(normalize(marker)));
+};
+
 const keywordHits = (text, keywords) => {
   const normalizedText = normalize(text);
   return keywords.filter((keyword) => normalizedText.includes(normalize(keyword)));
@@ -308,13 +335,22 @@ export const verifyDocumentWithCv = async ({ file, role, documentType }) => {
         : declaredType;
 
   const ocrConfidence = Number(cv.payload?.ocrConfidence);
-  const confidence = Math.max(
+  const fakeMarkers = fakeMarkerHits(extractedText);
+  let confidence = Math.max(
     classificationFromOcr.confidence,
     Number(cv.payload?.confidence) || 0,
     Number.isFinite(ocrConfidence) ? ocrConfidence : 0,
   );
 
-  const roleRejectionReason = validateRole({ role, documentType: detectedDocumentType });
+  if (fakeMarkers.length) {
+    issues.push(`Synthetic/test/unofficial document detected: ${fakeMarkers.slice(0, 5).join(', ')}`);
+    confidence = Math.min(confidence, 0.25);
+  }
+
+  const roleRejectionReason = validateRole({
+    role,
+    documentType: fakeMarkers.length ? 'UNKNOWN' : detectedDocumentType,
+  });
   if (roleRejectionReason) issues.push(roleRejectionReason);
   if (!extractedText.trim()) issues.push('OCR could not read text from this document');
   if (confidence < 0.45) issues.push('OCR confidence is too low for automatic verification');
@@ -331,7 +367,10 @@ export const verifyDocumentWithCv = async ({ file, role, documentType }) => {
   let status = 'needs_admin_review';
   let isValid = false;
   let rejectionReason = '';
-  if (roleRejectionReason || qualityStatus === 'unsupported' || qualityStatus === 'unreadable') {
+  if (fakeMarkers.length) {
+    status = 'ai_rejected';
+    rejectionReason = 'Synthetic/test/unofficial document detected';
+  } else if (roleRejectionReason || qualityStatus === 'unsupported' || qualityStatus === 'unreadable') {
     status = 'ai_rejected';
     rejectionReason = roleRejectionReason || 'Document is unreadable or empty';
   } else if (confidence >= 0.75 && detectedDocumentType !== 'UNKNOWN') {
@@ -344,8 +383,9 @@ export const verifyDocumentWithCv = async ({ file, role, documentType }) => {
     ...(cv.payload?.extractedFields ?? {}),
     ...(Array.isArray(cv.payload?.matchedKeywords) ? { serviceMatchedKeywords: cv.payload.matchedKeywords } : {}),
     declaredKind: documentType,
-    detectedDocumentType,
+    detectedDocumentType: fakeMarkers.length ? 'UNKNOWN' : detectedDocumentType,
     matchedKeywords: classificationFromOcr.matchedKeywords,
+    fakeMarkers,
     verifier: cv.verifier,
     cvServiceUrl: cv.cvServiceUrl,
   });
@@ -357,7 +397,7 @@ export const verifyDocumentWithCv = async ({ file, role, documentType }) => {
     ocrConfidence: Number.isFinite(ocrConfidence)
       ? Math.min(0.99, Math.max(0, Number(ocrConfidence.toFixed(2))))
       : null,
-    detectedDocumentType,
+    detectedDocumentType: fakeMarkers.length ? 'UNKNOWN' : detectedDocumentType,
     extractedText,
     extractedFields,
     qualityStatus,
