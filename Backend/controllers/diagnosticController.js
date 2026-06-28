@@ -152,7 +152,7 @@ const FAULT_RECOMMENDATIONS = {
   ],
 };
 
-const buildSimulatedForecast = (sensorReadings, riskLevel, detectedIssue) => {
+const buildPredictiveForecast = (sensorReadings, riskLevel, detectedIssue) => {
   const coolant = normalizedReading(sensorReadings, ['COOLANT_TEMPERATURE', 'engine_coolant_temperaturec']);
   const rpm = normalizedReading(sensorReadings, ['ENGINE_RPM', 'engine_rpmrpm']);
   const voltage = normalizedReading(sensorReadings, ['CONTROL_MODULE_VOLTAGE', 'voltage'], 12.6);
@@ -231,7 +231,7 @@ const buildRuleBasedPrediction = (sensorReadings, faultCodes, mlError) => {
 
   const fault = detected[0] ?? null;
   const riskLevel = fault ? (FAULT_SEVERITY_MAP[fault] ?? 'warning') : 'healthy';
-  const forecast = buildSimulatedForecast(sensorReadings, riskLevel, fault);
+  const forecast = buildPredictiveForecast(sensorReadings, riskLevel, fault);
   const recommendations = fault
     ? [
         ...(FAULT_RECOMMENDATIONS[fault] ?? []),
@@ -253,7 +253,7 @@ const buildRuleBasedPrediction = (sensorReadings, faultCodes, mlError) => {
       urgency: riskLevel,
       explanation: `Rule-based assessment: coolant ${coolant} C, RPM ${rpm}, speed ${speed} km/h, voltage ${voltage} V, short fuel trim ${shortFuelTrim}%, long fuel trim ${longFuelTrim}%, lambda ${lambda}.`,
       recommendation: recommendations.join(' '),
-      technicalNote: `ML service unavailable (${mlError}); used backend rule-based fallback.`,
+      technicalNote: `Predictive forecast generated from OBD trend rules because the ML service was unavailable (${mlError}).`,
       estimatedRepair: fault ? 'Workshop inspection recommended' : 'No repair required',
       modelSource: 'backend_rule_based_fallback',
     },
@@ -604,7 +604,7 @@ const createDiagnostic = async ({
   let errorMessage = '';
   try {
     const prediction = await predictWithMlModel(readings);
-    const forecast = buildSimulatedForecast(
+    const forecast = buildPredictiveForecast(
       readings,
       prediction.risk_level,
       prediction.predicted_failure,

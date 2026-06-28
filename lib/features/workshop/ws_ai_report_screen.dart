@@ -560,10 +560,8 @@ class _ActionFooterState extends State<_ActionFooter> {
     }
     setState(() => _creatingRepairTask = true);
     final ok = await AppErrorHandler.guard<bool>(context, () async {
-      await _portalService.updateBookingStatus(
-        _linkedBookingId,
-        'repair_in_progress',
-      );
+      await _diagnosticsService.createRepairTask(widget.report.id);
+      await _portalService.getBookings();
       return true;
     }, fallbackMessage: 'Could not create the repair task right now.');
     if (!mounted) return;

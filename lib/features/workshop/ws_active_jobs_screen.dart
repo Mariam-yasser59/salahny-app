@@ -23,7 +23,13 @@ class _WsActiveJobsScreenState extends State<WsActiveJobsScreen> {
   final Map<String, StreamSubscription<Position>> _liveTracking = {};
 
   List<_JobEntry> get _jobs => AppData.i.workshopBookings
-      .where((b) => b.status == RequestStatus.accepted)
+      .where(
+        (b) =>
+            b.status == RequestStatus.accepted ||
+            b.status == RequestStatus.inProgress ||
+            b.status == RequestStatus.diagnosticsReady ||
+            b.status == RequestStatus.repairInProgress,
+      )
       .map((b) => _JobEntry(b, b.progress))
       .toList(growable: false);
 

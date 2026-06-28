@@ -212,6 +212,12 @@ class TrackingScreen extends StatelessWidget {
     switch (status.toLowerCase()) {
       case 'accepted':
         return 2;
+      case 'in progress':
+        return 2;
+      case 'diagnostics ready':
+        return 3;
+      case 'repair in progress':
+        return 3;
       case 'completed':
         return 4;
       case 'pending':
