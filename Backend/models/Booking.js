@@ -45,6 +45,16 @@ const bookingSchema = new mongoose.Schema(
       default: 'Cash on Service',
       trim: true,
     },
+    subtotal: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    appServiceFee: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     total: {
       type: Number,
       default: 0,

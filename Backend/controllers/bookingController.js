@@ -6,6 +6,7 @@ import Earning from '../models/Earning.js';
 import Diagnostic from '../models/Diagnostic.js';
 import Review from '../models/Review.js';
 import { sendEmail } from '../services/emailService.js';
+import { calculateCheckoutTotal, findCatalogService } from '../data/egyptServiceCatalog.js';
 
 const numberOrNull = (value) => {
   if (value === undefined || value === null || value === '') return null;
@@ -92,6 +93,7 @@ export const createBooking = asyncHandler(async (req, res) => {
     user,
     paymentMethod = 'Cash on Service',
     total = 0,
+    subtotal = null,
     vehicleLabel = '',
     vehicleId = '',
     address = '',
@@ -184,14 +186,20 @@ export const createBooking = asyncHandler(async (req, res) => {
     });
   }
 
+  const catalogService = findCatalogService(serviceId) || findCatalogService(service);
+  const pricedSubtotal = catalogService?.price ?? Number(subtotal ?? total) ?? 0;
+  const checkout = calculateCheckoutTotal(pricedSubtotal);
+
   const booking = await Booking.create({
     user: req.user.role === 'admin' && user ? user : req.user._id,
     workshop,
     service,
-    serviceId,
+    serviceId: catalogService?.id || serviceId,
     date: bookingDate,
     paymentMethod,
-    total,
+    subtotal: checkout.subtotal,
+    appServiceFee: checkout.appServiceFee,
+    total: Number(total) > 0 && Math.abs(Number(total) - checkout.total) < 0.01 ? Number(total) : checkout.total,
     vehicleLabel,
     vehicleId,
     address: normalizedAddress,

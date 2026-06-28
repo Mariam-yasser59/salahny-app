@@ -4,6 +4,7 @@ import Booking from '../models/Booking.js';
 import Service from '../models/Service.js';
 import ServicePackage from '../models/Package.js';
 import Workshop from '../models/Workshop.js';
+import { egyptServiceCatalog } from '../data/egyptServiceCatalog.js';
 import asyncHandler from '../utils/asyncHandler.js';
 
 const router = express.Router();
@@ -164,7 +165,17 @@ router.get(
 router.get(
   '/services',
   asyncHandler(async (_req, res) => {
-    const services = await Service.find({ isEnabled: { $ne: false } });
+    const customServices = await Service.find({ isEnabled: { $ne: false } });
+    const customByName = new Map(customServices.map((item) => [item.name.toLowerCase(), item.toObject()]));
+    const services = egyptServiceCatalog.map((item) => ({
+      ...item,
+      ...(customByName.get(item.name.toLowerCase()) || {}),
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      price: item.price,
+      isEnabled: true,
+    }));
     res.status(200).json({ success: true, count: services.length, data: services });
   }),
 );

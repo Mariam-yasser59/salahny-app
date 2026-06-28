@@ -54,13 +54,13 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
   }
 
   ServiceModel get _diagnosticService => const ServiceModel(
-    id: _diagnosticServiceId,
-    name: 'Car Check + AI Diagnostics',
-    category: 'Inspection',
+    id: 'ai-diagnosis-report',
+    name: 'AI Diagnosis Report',
+    category: 'Diagnostics',
     description:
-        'Workshop inspection supported by Salahny AI diagnostic review.',
-    emoji: 'AI',
-    price: 25,
+        'AI-assisted detection and prediction report from OBD readings.',
+    emoji: 'Service',
+    price: 225,
     durationMins: 30,
     isPopular: true,
   );
@@ -679,9 +679,9 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
       orElse: () => _nearbyWorkshops.first,
     );
     final subtotal = service.price;
-    const serviceFee = 5.0;
+    final serviceFee = double.parse((subtotal * 0.10).toStringAsFixed(2));
     final discount = service.isPopular && service.id != _diagnosticServiceId
-        ? 4.0
+        ? 0.0
         : 0.0;
     await AppCache.saveBookingCheckout(
       BookingCheckoutData(

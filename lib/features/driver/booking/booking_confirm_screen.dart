@@ -403,24 +403,24 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
                   children: [
                     InfoRow(
                       label: 'Subtotal',
-                      value: '\$${checkout.subtotal.toStringAsFixed(2)}',
+                      value: 'EGP ${checkout.subtotal.toStringAsFixed(2)}',
                     ),
                     const SizedBox(height: 10),
                     InfoRow(
-                      label: 'Service Fee',
-                      value: '\$${checkout.serviceFee.toStringAsFixed(2)}',
+                      label: 'Salahny service fee (10%)',
+                      value: 'EGP ${checkout.serviceFee.toStringAsFixed(2)}',
                     ),
                     const SizedBox(height: 10),
                     InfoRow(
                       label: 'Discount',
-                      value: '-\$${checkout.discount.toStringAsFixed(2)}',
+                      value: '-EGP ${checkout.discount.toStringAsFixed(2)}',
                     ),
                     const SizedBox(height: 12),
                     const Div(),
                     const SizedBox(height: 12),
                     InfoRow(
                       label: 'Total',
-                      value: '\$${checkout.total.toStringAsFixed(2)}',
+                      value: 'EGP ${checkout.total.toStringAsFixed(2)}',
                       bold: true,
                     ),
                   ],
@@ -474,6 +474,8 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
                         'service': checkout.serviceName,
                         'serviceId': checkout.serviceId,
                         'paymentMethod': selectedPayment.label,
+                        'subtotal': checkout.subtotal,
+                        'appServiceFee': checkout.serviceFee,
                         'total': checkout.total,
                         'vehicleLabel': checkout.vehicleLabel,
                         'vehicleId': checkout.vehicleId,

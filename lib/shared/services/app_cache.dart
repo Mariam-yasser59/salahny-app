@@ -395,7 +395,9 @@ class AppCache {
     final service = services.firstOrNull;
     final workshop = workshops.firstOrNull;
     final vehicle = _vehicles.firstOrNull;
-    const serviceFee = 5.0;
+    final serviceFee = double.parse(
+      ((service?.price ?? 0) * 0.10).toStringAsFixed(2),
+    );
     const discount = 0.0;
     return BookingCheckoutData(
       serviceId: service?.id ?? '',

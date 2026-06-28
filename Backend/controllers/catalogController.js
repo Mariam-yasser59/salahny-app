@@ -1,10 +1,21 @@
 import ServicePackage from '../models/Package.js';
 import Service from '../models/Service.js';
+import { egyptServiceCatalog } from '../data/egyptServiceCatalog.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import { logActivity } from '../utils/activityLogger.js';
 
 export const getServices = asyncHandler(async (_req, res) => {
-  const services = await Service.find().sort({ createdAt: 1 });
+  const customServices = await Service.find().sort({ createdAt: 1 });
+  const customByName = new Map(customServices.map((item) => [item.name.toLowerCase(), item.toObject()]));
+  const services = egyptServiceCatalog.map((item) => ({
+    ...item,
+    ...(customByName.get(item.name.toLowerCase()) || {}),
+    id: item.id,
+    name: item.name,
+    category: item.category,
+    price: item.price,
+    isEnabled: true,
+  }));
 
   res.status(200).json({
     success: true,
