@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/services/app_cache.dart';
+import '../../../shared/services/location_service.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../../workshops/services/workshop_service.dart';
 
@@ -17,17 +19,39 @@ class BookServiceScreen extends StatefulWidget {
 }
 
 class _BookServiceScreenState extends State<BookServiceScreen> {
+  static const double _nearbyRadiusKm = 25;
+
   int _step = 0;
   String? _vehicleId, _workshopId, _serviceId, _date, _time;
   DateTime? _slot;
   bool _routeArgsApplied = false;
   final _workshopService = WorkshopService();
+  final _locationService = const LocationService();
   List<WorkshopModel> _workshops = AppData.i.workshops;
+  LatLng? _currentLocation;
+  bool _locating = false;
+  String? _locationMessage;
 
   static const _diagnosticServiceId = 'ai_car_check_diagnostics';
 
-  WorkshopModel? get _selectedWorkshop =>
-      _workshops.where((workshop) => workshop.id == _workshopId).firstOrNull;
+  WorkshopModel? get _selectedWorkshop => _nearbyWorkshops
+      .where((workshop) => workshop.id == _workshopId)
+      .firstOrNull;
+
+  List<WorkshopModel> get _nearbyWorkshops {
+    if (_currentLocation == null) return const [];
+    final nearby = _workshops
+        .where((workshop) {
+          final distance = _distanceFor(workshop);
+          return distance != null && distance <= _nearbyRadiusKm;
+        })
+        .toList(growable: false);
+    nearby.sort(
+      (a, b) =>
+          (_distanceFor(a) ?? 999999).compareTo(_distanceFor(b) ?? 999999),
+    );
+    return nearby;
+  }
 
   ServiceModel get _diagnosticService => const ServiceModel(
     id: _diagnosticServiceId,
@@ -119,18 +143,45 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
           : vehicles.first.id;
       _step = 1;
     }
-    _loadWorkshops();
+    _loadLocation();
   }
 
   Future<void> _loadWorkshops() async {
     try {
-      final workshops = await _workshopService.getWorkshops();
+      final workshops = await _workshopService.getWorkshops(
+        latitude: _currentLocation?.latitude,
+        longitude: _currentLocation?.longitude,
+      );
       if (!mounted) return;
       setState(() => _workshops = workshops);
     } catch (_) {
       if (!mounted) return;
       setState(() => _workshops = AppData.i.workshops);
     }
+  }
+
+  Future<void> _loadLocation() async {
+    setState(() {
+      _locating = true;
+      _locationMessage = null;
+    });
+    final result = await _locationService.currentPosition(withAddress: true);
+    if (!mounted) return;
+    setState(() => _locating = false);
+    if (!result.hasLocation) {
+      setState(
+        () => _locationMessage =
+            result.message ?? 'Could not detect your location.',
+      );
+      await _loadWorkshops();
+      return;
+    }
+    final position = result.position!;
+    setState(() {
+      _currentLocation = LatLng(position.latitude, position.longitude);
+      _locationMessage = result.address;
+    });
+    await _loadWorkshops();
   }
 
   void _applyRouteArgs() {
@@ -335,10 +386,70 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
             sub: 'Workshops will appear after owner setup.',
           ),
         )
+      : _currentLocation == null
+      ? Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: ACard(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.location_on_rounded,
+                    color: AC.red,
+                    size: 42,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Location required',
+                    style: TextStyle(
+                      color: AC.t1,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Salahny shows nearby workshops only. Share your location to continue booking.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AC.t3, height: 1.4),
+                  ),
+                  if ((_locationMessage ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      _locationMessage!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AC.warning, fontSize: 12),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  AppBtn(
+                    label: _locating ? 'Detecting...' : 'Use Current Location',
+                    loading: _locating,
+                    onTap: _locating ? null : _loadLocation,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        )
+      : _nearbyWorkshops.isEmpty
+      ? Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: EmptyState(
+              icon: 'WS',
+              title: 'No Nearby Workshops',
+              sub:
+                  'No approved workshops were found within ${_nearbyRadiusKm.toStringAsFixed(0)} km. Try again from another location.',
+            ),
+          ),
+        )
       : ListView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           children: [
-            ..._workshops.map(
+            ..._nearbyWorkshops.map(
               (w) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: _SelectableCard(
@@ -351,6 +462,11 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
                     children: [
                       RatingStars(rating: w.rating),
                       const SizedBox(width: 6),
+                      Text(
+                        '${(_distanceFor(w) ?? w.distance).toStringAsFixed(1)} km',
+                        style: const TextStyle(fontSize: 11, color: AC.gold),
+                      ),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           w.address,
@@ -546,7 +662,7 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
 
     final vehicles = AppData.i.vehicles;
     final service = _selectedService;
-    if (vehicles.isEmpty || _workshops.isEmpty || service == null) {
+    if (vehicles.isEmpty || _nearbyWorkshops.isEmpty || service == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Vehicle, workshop, and service data must be loaded.'),
@@ -558,9 +674,9 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
       (item) => item.id == _vehicleId,
       orElse: () => vehicles.first,
     );
-    final workshop = _workshops.firstWhere(
+    final workshop = _nearbyWorkshops.firstWhere(
       (item) => item.id == _workshopId,
-      orElse: () => _workshops.first,
+      orElse: () => _nearbyWorkshops.first,
     );
     final subtotal = service.price;
     const serviceFee = 5.0;
@@ -606,6 +722,21 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
     if (selected == today) return 'Today';
     if (selected == today.add(const Duration(days: 1))) return 'Tomorrow';
     return DateFormat('MMM d').format(date);
+  }
+
+  double? _distanceFor(WorkshopModel workshop) {
+    if (_currentLocation == null) {
+      return workshop.distance > 0 ? workshop.distance : null;
+    }
+    if (workshop.latitude != null && workshop.longitude != null) {
+      return LocationService.distanceKm(
+        _currentLocation!.latitude,
+        _currentLocation!.longitude,
+        workshop.latitude!,
+        workshop.longitude!,
+      );
+    }
+    return workshop.distance > 0 ? workshop.distance : null;
   }
 }
 

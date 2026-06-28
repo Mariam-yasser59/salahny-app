@@ -18,6 +18,8 @@ class WorkshopsScreen extends StatefulWidget {
 }
 
 class _WorkshopsScreenState extends State<WorkshopsScreen> {
+  static const double _nearbyRadiusKm = 25;
+
   final _api = WorkshopService();
   final _locationService = const LocationService();
   final _searchCtrl = TextEditingController();
@@ -124,9 +126,17 @@ class _WorkshopsScreenState extends State<WorkshopsScreen> {
 
   void _applyFilters() {
     final query = _searchCtrl.text.trim().toLowerCase();
-    final filtered = query.isEmpty
-        ? _allItems
+    final nearby = _currentLocation == null
+        ? <WorkshopModel>[]
         : _allItems
+              .where((item) {
+                final distance = _distanceFor(item);
+                return distance != null && distance <= _nearbyRadiusKm;
+              })
+              .toList(growable: false);
+    final filtered = query.isEmpty
+        ? nearby
+        : nearby
               .where((item) {
                 final haystack = [
                   item.name,
@@ -195,7 +205,7 @@ class _WorkshopsScreenState extends State<WorkshopsScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: AC.bg,
-    appBar: SAppBar(title: 'Nearby Workshops'),
+    appBar: const SAppBar(title: 'Nearby Workshops'),
     body: Column(
       children: [
         if (_loading)
@@ -263,26 +273,30 @@ class _WorkshopsScreenState extends State<WorkshopsScreen> {
           child: SecHeader(
             title: 'Available Now',
             sub: _currentLocation == null
-                ? '${_items.length} approved workshops'
-                : '${_items.length} approved workshops sorted by distance',
+                ? 'Share your location to see nearby workshops'
+                : '${_items.length} workshops within ${_nearbyRadiusKm.toStringAsFixed(0)} km',
           ),
         ),
         const SizedBox(height: 12),
         Expanded(
           child: _items.isEmpty
-              ? const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24),
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: EmptyState(
                     icon: '?',
-                    title: 'No matching workshops',
-                    sub: 'Try another service, workshop name, or nearby area.',
+                    title: _currentLocation == null
+                        ? 'Location required'
+                        : 'No nearby workshops',
+                    sub: _currentLocation == null
+                        ? 'Use current location or search an address to show nearby workshops only.'
+                        : 'Try another address or check back when more workshops are available nearby.',
                   ),
                 )
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                   itemCount: _items.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => _WorkshopTile(
+                  itemBuilder: (_, i) => _workshopTile(
                     workshop: _items[i],
                     distanceKm: _distanceFor(_items[i]) ?? _items[i].distance,
                   ),
@@ -292,7 +306,7 @@ class _WorkshopsScreenState extends State<WorkshopsScreen> {
     ),
   );
 
-  Widget _WorkshopTile({
+  Widget _workshopTile({
     required WorkshopModel workshop,
     required double distanceKm,
   }) => ACard(
@@ -362,13 +376,13 @@ class _WorkshopsScreenState extends State<WorkshopsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
               decoration: BoxDecoration(
                 color: workshop.isOpen
-                    ? AC.success.withOpacity(0.12)
-                    : AC.error.withOpacity(0.12),
+                    ? AC.success.withValues(alpha: 0.12)
+                    : AC.error.withValues(alpha: 0.12),
                 borderRadius: Rd.fullA,
                 border: Border.all(
                   color: workshop.isOpen
-                      ? AC.success.withOpacity(0.4)
-                      : AC.error.withOpacity(0.4),
+                      ? AC.success.withValues(alpha: 0.4)
+                      : AC.error.withValues(alpha: 0.4),
                 ),
               ),
               child: Text(
