@@ -196,9 +196,9 @@ const callCvService = async ({ file, role, documentType }) => {
   const candidateUrls = [
     ...expandRailwayPrivateUrl(process.env.CV_SERVICE_URL),
     ...expandRailwayPrivateUrl(process.env.CV_SERVICE_FALLBACK_URL),
-    ...expandRailwayPrivateUrl('http://salahny-cv.railway.internal'),
-    ...expandRailwayPrivateUrl('http://salahny-app.railway.internal'),
-    ...expandRailwayPrivateUrl('https://salahny-cv-production.up.railway.app'),
+    ...(process.env.CV_SERVICE_USE_RAILWAY_INTERNAL === 'true'
+      ? expandRailwayPrivateUrl('http://salahny-cv.railway.internal')
+      : []),
   ];
 
   const failures = [];
@@ -289,14 +289,23 @@ export const verifyDocumentWithCv = async ({ file, role, documentType }) => {
 
   const cv = await callCvService({ file, role, documentType });
   if (cv.failures?.length) issues.push(...cv.failures.slice(0, 2));
+  if (!cv.payload) {
+    issues.push('CV service is not configured or unavailable');
+  }
 
   const extractedText = cv.payload?.extractedText?.toString?.() ?? '';
   const classificationFromOcr = classifyDocumentText(extractedText);
   const declaredType = classifyFromDeclaredKind(documentType);
+  const serviceDetectedType =
+    cv.payload?.detectedDocumentType?.toString?.().toUpperCase?.() ||
+    cv.payload?.documentType?.toString?.().toUpperCase?.() ||
+    'UNKNOWN';
   const detectedDocumentType =
     classificationFromOcr.documentType !== 'UNKNOWN'
       ? classificationFromOcr.documentType
-      : declaredType;
+      : ['DRIVING_LICENSE', 'COMMERCIAL_REGISTER', 'TAX_CARD'].includes(serviceDetectedType)
+        ? serviceDetectedType
+        : declaredType;
 
   const ocrConfidence = Number(cv.payload?.ocrConfidence);
   const confidence = Math.max(
@@ -333,6 +342,7 @@ export const verifyDocumentWithCv = async ({ file, role, documentType }) => {
   const extractedFields = compactObject({
     ...extractStructuredFields(detectedDocumentType, extractedText),
     ...(cv.payload?.extractedFields ?? {}),
+    ...(Array.isArray(cv.payload?.matchedKeywords) ? { serviceMatchedKeywords: cv.payload.matchedKeywords } : {}),
     declaredKind: documentType,
     detectedDocumentType,
     matchedKeywords: classificationFromOcr.matchedKeywords,
