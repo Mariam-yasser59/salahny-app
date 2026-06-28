@@ -73,6 +73,7 @@ class _WsReqDetailScreenState extends State<WsReqDetailScreen> {
         bookingId: widget.booking.id,
         rating: _driverRating,
         comment: _ratingComment.text,
+        ratingType: 'customer_by_workshop',
       );
       await _service.syncDashboard();
       return true;

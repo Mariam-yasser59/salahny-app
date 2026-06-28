@@ -9,11 +9,23 @@ class RatingService {
     required String bookingId,
     required int rating,
     String comment = '',
+    String ratingType = 'workshop_by_customer',
   }) async {
-    await _client.post('/reviews', {
-      'bookingId': bookingId,
-      'rating': rating,
-      'comment': comment.trim(),
-    });
+    final cleanComment = comment.trim();
+    try {
+      await _client.post('/reviews', {
+        'bookingId': bookingId,
+        'rating': rating,
+        'comment': cleanComment,
+      });
+    } on ApiException catch (error) {
+      if (error.statusCode != 404) rethrow;
+      await _client.post('/ratings', {
+        'bookingId': bookingId,
+        'ratingType': ratingType,
+        'stars': rating,
+        'comment': cleanComment,
+      });
+    }
   }
 }

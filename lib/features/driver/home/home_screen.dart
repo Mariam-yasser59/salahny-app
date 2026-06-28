@@ -9,6 +9,7 @@ import '../../workshops/services/workshop_service.dart';
 import '../../services/services/service_api.dart';
 import '../vehicles/services/vehicle_service.dart';
 import '../diagnostics/services/diagnostics_service.dart';
+import '../../ratings/services/rating_service.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../../../shared/services/app_cache.dart';
@@ -114,10 +115,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     body: IndexedStack(
       index: _tab,
       children: [
-        _HomeTab(
-          onRefresh: _refreshDriverHome,
-          isRefreshing: _isRefreshing,
-        ),
+        _HomeTab(onRefresh: _refreshDriverHome, isRefreshing: _isRefreshing),
         const _ServicesTab(),
         AppCache.isGuest ? const _GuestPrompt() : const _DiagnosticsTab(),
         AppCache.isGuest ? const _GuestPrompt() : const _BookingsTab(),
@@ -141,10 +139,7 @@ class _HomeTab extends StatelessWidget {
   final Future<void> Function() onRefresh;
   final bool isRefreshing;
 
-  const _HomeTab({
-    required this.onRefresh,
-    required this.isRefreshing,
-  });
+  const _HomeTab({required this.onRefresh, required this.isRefreshing});
 
   @override
   Widget build(BuildContext context) {
@@ -174,20 +169,14 @@ class _HomeTab extends StatelessWidget {
                     height: 265,
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [
-                          Color(0xFF6B0A12),
-                          AC.red,
-                          Color(0xFFD93344),
-                        ],
+                        colors: [Color(0xFF6B0A12), AC.red, Color(0xFFD93344)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                     ),
                   ),
                   Positioned.fill(
-                    child: CustomPaint(
-                      painter: _GridPaint(opacity: 0.09),
-                    ),
+                    child: CustomPaint(painter: _GridPaint(opacity: 0.09)),
                   ),
                   SafeArea(
                     child: Padding(
@@ -272,7 +261,7 @@ class _HomeTab extends StatelessWidget {
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         vehicle == null
@@ -338,7 +327,8 @@ class _HomeTab extends StatelessWidget {
                                 ),
                                 HealthArc(
                                   value: () {
-                                    final report = AppCache.latestDiagnosticReport;
+                                    final report =
+                                        AppCache.latestDiagnosticReport;
                                     if (report.id.isNotEmpty &&
                                         vehicle != null &&
                                         report.vehicleId == vehicle.id) {
@@ -422,11 +412,7 @@ class _HomeTab extends StatelessWidget {
 
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.only(
-                  left: 24,
-                  right: 24,
-                  bottom: 8,
-                ),
+                padding: const EdgeInsets.only(left: 24, right: 24, bottom: 8),
                 child: SecHeader(
                   title: 'Workshops Near You',
                   action: 'See All',
@@ -986,11 +972,11 @@ class _ServicesTabState extends State<_ServicesTab> {
                       ),
                       boxShadow: _sel == _cats[i]
                           ? [
-                        BoxShadow(
-                          color: AC.red.withOpacity(0.3),
-                          blurRadius: 10,
-                        ),
-                      ]
+                              BoxShadow(
+                                color: AC.red.withOpacity(0.3),
+                                blurRadius: 10,
+                              ),
+                            ]
                           : null,
                     ),
                     child: Text(
@@ -1198,30 +1184,30 @@ class _DiagnosticsTabState extends State<_DiagnosticsTab>
                 ),
               ),
               Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  gradient: _scanning
-                      ? AC.redGrad
-                      : const LinearGradient(
-                    colors: [Color(0xFF2A2A2A), Color(0xFF1A1A1A)],
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: _scanning
-                      ? [
-                    BoxShadow(
-                      color: AC.red.withOpacity(0.55),
-                      blurRadius: 36,
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      gradient: _scanning
+                          ? AC.redGrad
+                          : const LinearGradient(
+                              colors: [Color(0xFF2A2A2A), Color(0xFF1A1A1A)],
+                            ),
+                      shape: BoxShape.circle,
+                      boxShadow: _scanning
+                          ? [
+                              BoxShadow(
+                                color: AC.red.withOpacity(0.55),
+                                blurRadius: 36,
+                              ),
+                            ]
+                          : null,
                     ),
-                  ]
-                      : null,
-                ),
-                child: Icon(
-                  Icons.radar_rounded,
-                  color: _scanning ? Colors.white : AC.t3,
-                  size: 56,
-                ),
-              )
+                    child: Icon(
+                      Icons.radar_rounded,
+                      color: _scanning ? Colors.white : AC.t3,
+                      size: 56,
+                    ),
+                  )
                   .animate(target: _scanning ? 1 : 0)
                   .rotate(end: 1.0, duration: 2000.ms, curve: Curves.linear),
             ],
@@ -1243,10 +1229,10 @@ class _DiagnosticsTabState extends State<_DiagnosticsTab>
           icon: _scanning
               ? null
               : const Icon(
-            Icons.play_arrow_rounded,
-            color: Colors.white,
-            size: 20,
-          ),
+                  Icons.play_arrow_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
         ),
         const SizedBox(height: 30),
         SecHeader(
@@ -1457,47 +1443,50 @@ class _BookingsTabState extends State<_BookingsTab>
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : TabBarView(
-          controller: _tab,
-          children: _statuses.map((s) {
-            final list = s == 'All'
-                ? AppData.i.bookings
-                : AppData.i.bookings
-                .where(
-                  (b) => s == 'Active'
-                  ? ![
-                'Completed',
-                'Cancelled',
-                'Rejected',
-              ].contains(b.status)
-                  : b.status == s,
-            )
-                .toList();
-            if (list.isEmpty) {
-              return RefreshIndicator(
-                onRefresh: _refresh,
-                child: ListView(
-                  children: const [
-                    SizedBox(height: 80),
-                    EmptyState(
-                      icon: '📅',
-                      title: 'No Bookings',
-                      sub: 'Your bookings will appear here',
+                controller: _tab,
+                children: _statuses.map((s) {
+                  final list = s == 'All'
+                      ? AppData.i.bookings
+                      : AppData.i.bookings.where((b) {
+                          final status = b.status.toLowerCase().replaceAll(
+                            '_',
+                            ' ',
+                          );
+                          if (s == 'Active') {
+                            return ![
+                              'completed',
+                              'cancelled',
+                              'rejected',
+                            ].contains(status);
+                          }
+                          return status == s.toLowerCase();
+                        }).toList();
+                  if (list.isEmpty) {
+                    return RefreshIndicator(
+                      onRefresh: _refresh,
+                      child: ListView(
+                        children: const [
+                          SizedBox(height: 80),
+                          EmptyState(
+                            icon: '📅',
+                            title: 'No Bookings',
+                            sub: 'Your bookings will appear here',
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return RefreshIndicator(
+                    onRefresh: _refresh,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 100),
+                      itemCount: list.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (_, i) => _BookingTile(b: list[i]),
                     ),
-                  ],
-                ),
-              );
-            }
-            return RefreshIndicator(
-              onRefresh: _refresh,
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 100),
-                itemCount: list.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (_, i) => _BookingTile(b: list[i]),
+                  );
+                }).toList(),
               ),
-            );
-          }).toList(),
-        ),
       ),
     ],
   );
@@ -1507,6 +1496,115 @@ class _BookingTile extends StatelessWidget {
   final BookingModel b;
 
   const _BookingTile({required this.b});
+
+  Future<void> _rateWorkshop(BuildContext context) async {
+    final parentContext = context;
+    final service = RatingService();
+    final comment = TextEditingController();
+    var rating = 5;
+    var loading = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            18,
+            20,
+            MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Rate this workshop',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AC.t1,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                b.workshopName,
+                style: const TextStyle(fontSize: 13, color: AC.t3),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: List.generate(
+                  5,
+                  (index) => IconButton(
+                    onPressed: loading
+                        ? null
+                        : () => setSheetState(() => rating = index + 1),
+                    icon: Icon(
+                      index < rating
+                          ? Icons.star_rounded
+                          : Icons.star_outline_rounded,
+                      color: AC.gold,
+                      size: 30,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: comment,
+                minLines: 2,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  hintText: 'Tell us about the service',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 14),
+              AppBtn(
+                label: loading ? 'Submitting...' : 'Submit Rating',
+                onTap: loading
+                    ? () {}
+                    : () async {
+                        setSheetState(() => loading = true);
+                        try {
+                          await service.submitRating(
+                            bookingId: b.id,
+                            rating: rating,
+                            comment: comment.text,
+                          );
+                          if (!parentContext.mounted) return;
+                          Navigator.pop(sheetContext);
+                          ScaffoldMessenger.of(parentContext).showSnackBar(
+                            const SnackBar(
+                              content: Text('Workshop rating submitted'),
+                            ),
+                          );
+                        } catch (error) {
+                          setSheetState(() => loading = false);
+                          ScaffoldMessenger.of(parentContext).showSnackBar(
+                            SnackBar(content: Text(error.toString())),
+                          );
+                        }
+                      },
+                icon: const Icon(
+                  Icons.star_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    comment.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => ACard(
@@ -1571,6 +1669,15 @@ class _BookingTile extends StatelessWidget {
             ),
           ],
         ),
+        if (b.status.toLowerCase() == 'completed' && !b.driverReviewed) ...[
+          const SizedBox(height: 12),
+          AppBtn(
+            label: 'Rate Workshop',
+            outline: true,
+            onTap: () => _rateWorkshop(context),
+            icon: const Icon(Icons.star_rounded, color: AC.red, size: 18),
+          ),
+        ],
       ],
     ),
   );
@@ -1720,7 +1827,7 @@ class _ProfileTab extends StatelessWidget {
                   Navigator.pushNamedAndRemoveUntil(
                     context,
                     R.roleSelect,
-                        (_) => false,
+                    (_) => false,
                   );
                 }
               },
@@ -1900,7 +2007,7 @@ class _NavBar extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: List.generate(
         tabs.length,
-            (i) => _NavItem(
+        (i) => _NavItem(
           icon: icons[i],
           label: tabs[i],
           active: i == current,
@@ -1977,11 +2084,11 @@ class _NavItemState extends State<_NavItem>
                 borderRadius: Rd.smA,
                 boxShadow: widget.active
                     ? [
-                  BoxShadow(
-                    color: AC.red.withOpacity(0.4),
-                    blurRadius: 10,
-                  ),
-                ]
+                        BoxShadow(
+                          color: AC.red.withOpacity(0.4),
+                          blurRadius: 10,
+                        ),
+                      ]
                     : null,
               ),
               child: Icon(
